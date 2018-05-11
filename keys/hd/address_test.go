@@ -1,6 +1,6 @@
 package hd
 
-/*
+
 
 import (
 	"encoding/hex"
@@ -11,7 +11,7 @@ import (
 func TestManual(t *testing.T) {
 	bytes, _ := hex.DecodeString("dfac699f1618c9be4df2befe94dc5f313946ebafa386756bd4926a1ecfd7cf2438426ede521d1ee6512391bc200b7910bcbea593e68d52b874c29bdc5a308ed1")
 	fmt.Println(bytes)
-	puk, prk, ch, se := ComputeMastersFromSeed(string(bytes))
+	puk, se, ch := ComputeMastersFromSeed(string(bytes))
 	fmt.Println(puk, ch, se)
 
 	pubBytes2 := DerivePublicKeyForPath(
@@ -23,7 +23,7 @@ func TestManual(t *testing.T) {
 	fmt.Printf("PUB2 %X\n", pubBytes2)
 
 	privBytes := DerivePrivateKeyForPath(
-		HexDecode(prk),
+		[]byte("Bitcoin seed"),
 		HexDecode(ch),
 		//"44'/118'/0'/0/0",
 		//"0/0",
@@ -34,4 +34,3 @@ func TestManual(t *testing.T) {
 	fmt.Printf("PUB  %X\n", pubBytes)
 }
 
-*/
