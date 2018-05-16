@@ -48,6 +48,7 @@ func (kb dbKeybase) Create(name, passphrase string, algo CryptoAlgo) (Info, stri
 	// recovery
 	// ie [secret] = [type] + [secret]
 	typ := cryptoAlgoToByte(algo)
+	// TODO(ismail): we don't want to encode the type here:
 	secret = append([]byte{typ}, secret...)
 
 	// return the mnemonic phrase
@@ -69,6 +70,7 @@ func (kb dbKeybase) Recover(name, passphrase, seedphrase string) (Info, error) {
 	// secret is comprised of the actual secret with the type
 	// appended.
 	// ie [secret] = [type] + [secret]
+	// TODO(ismail): recovering the uesed types needs to happen differently:
 	typ, secret := secret[0], secret[1:]
 	algo := byteToCryptoAlgo(typ)
 	priv, err := generate(algo, secret)

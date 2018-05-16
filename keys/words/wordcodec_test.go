@@ -6,6 +6,8 @@ import (
 	asrt "github.com/stretchr/testify/assert"
 	rqr "github.com/stretchr/testify/require"
 
+	"github.com/Liamsi/go-bip39"
+
 	cmn "github.com/tendermint/tmlibs/common"
 )
 
@@ -138,43 +140,46 @@ func getRandWord(c *WordCodec) string {
 func getDiffWord(c *WordCodec, not string) string {
 	w := getRandWord(c)
 	if w == not {
-		w = getRandWord(c)
+		w = getDiffWord(c, not)
 	}
 	return w
 }
 
 func TestCheckTypoDetection(t *testing.T) {
 	assert, require := asrt.New(t), rqr.New(t)
-
-	banks := []string{"english", "spanish", "japanese", "chinese_simplified"}
+	// bip39 dependency only supports engl. so far:
+	banks := []string{"english" /*, "spanish", "japanese", "chinese_simplified"*/}
 
 	for _, bank := range banks {
 		codec, err := LoadCodec(bank)
 		require.Nil(err, "%s: %+v", bank, err)
-		for i := 0; i < 1000; i++ {
-			numBytes := cmn.RandInt()%60 + 4
-			data := cmn.RandBytes(numBytes)
+		for i := 0; i < 200; i++ {
+
+			data, _ := bip39.NewEntropy(256)
 
 			words, err := codec.BytesToWords(data)
 			assert.Nil(err, "%s: %+v", bank, err)
+
 			good, err := codec.WordsToBytes(words)
 			assert.Nil(err, "%s: %+v", bank, err)
-			assert.Equal(data, good, bank)
+			assert.Equal(bip39.AddChecksum(data), good, "iter: %v; bank=%s; data=%v", i, bank, data)
 
 			// now try some tweaks...
 			cut := words[1:]
 			_, err = codec.WordsToBytes(cut)
 			assert.NotNil(err, "%s: %s", bank, words)
 
-			// swap a word within the bank, should fails
+			// TODO with bip39, in some cases this actually passes (doesn't return an error);
+			// swap a word within the bank, should fail
+			before := words[3]
 			words[3] = getDiffWord(codec, words[3])
 			_, err = codec.WordsToBytes(words)
-			assert.NotNil(err, "%s: %s", bank, words)
+			assert.NotNil(err, "iter: %v; %s: %s\ndata=%v\ncheckeddata=%v\nbefore=%v\nafter=%v", i, bank, words, data, bip39.AddChecksum(data), before, words[3])
 
 			// put a random word here, must fail
 			words[3] = cmn.RandStr(10)
 			_, err = codec.WordsToBytes(words)
-			assert.NotNil(err, "%s: %s", bank, words)
+			assert.NotNil(err, "iter: %v %s: %s", i, bank, words)
 		}
 	}
 }

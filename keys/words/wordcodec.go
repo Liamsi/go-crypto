@@ -5,8 +5,11 @@ import (
 	"strings"
 
 	"github.com/pkg/errors"
+	"github.com/bartekn/go-bip39"
 
 	"github.com/tendermint/go-crypto/keys/words/wordlist"
+	"fmt"
+	"reflect"
 )
 
 const BankSize = 2048
@@ -14,10 +17,13 @@ const BankSize = 2048
 // TODO: add error-checking codecs for invalid phrases
 
 type Codec interface {
+	// BytesToWords return a human memorable list of words, a mnemonic string, created from the passed bytes (entropy).
 	BytesToWords([]byte) ([]string, error)
+	// WordsToBytes takes a mnemonic string and turns it into a byte array (suitable for creating another mnemonic).
 	WordsToBytes([]string) ([]byte, error)
 }
 
+// WordCodec implements the codec interface using bip39 and (TODO clarify curve and error checking behaviour).
 type WordCodec struct {
 	words []string
 	bytes map[string]int
@@ -59,58 +65,25 @@ func MustLoadCodec(bank string) *WordCodec {
 	return codec
 }
 
-// loadBank opens a wordlist file and returns all words inside
-func loadBank(bank string) ([]string, error) {
-	filename := "keys/words/wordlist/" + bank + ".txt"
-	words, err := wordlist.Asset(filename)
-	if err != nil {
-		return nil, err
-	}
-	wordsAll := strings.Split(strings.TrimSpace(string(words)), "\n")
-	return wordsAll, nil
-}
-
-// // TODO: read from go-bind assets
-// func getData(filename string) (string, error) {
-// 	f, err := os.Open(filename)
-// 	if err != nil {
-// 		return "", errors.WithStack(err)
-// 	}
-// 	defer f.Close()
-
-// 	data, err := ioutil.ReadAll(f)
-// 	if err != nil {
-// 		return "", errors.WithStack(err)
-// 	}
-
-// 	return string(data), nil
-// }
-
-// given this many bytes, we will produce this many words
-func wordlenFromBytes(numBytes int) int {
-	// 2048 words per bank, which is 2^11.
-	// 8 bits per byte, and we add +10 so it rounds up
-	return (8*numBytes + 10) / 11
-}
-
-// given this many words, we will produce this many bytes.
-// sometimes there are two possibilities.
-// if maybeShorter is true, then represents len OR len-1 bytes
-func bytelenFromWords(numWords int) (length int, maybeShorter bool) {
-	// calculate the max number of complete bytes we could store in this word
-	length = 11 * numWords / 8
-	// if one less byte would also generate this length, set maybeShorter
-	if wordlenFromBytes(length-1) == numWords {
-		maybeShorter = true
-	}
-	return
-}
-
-// TODO: add checksum
+// TODO BytesToWords implements bip39's TODO
 func (c *WordCodec) BytesToWords(raw []byte) (words []string, err error) {
-	// always add a checksum to the data
+	if !reflect.DeepEqual(c.words, bip39.WordList) {
+		return nil, fmt.Errorf("TODO: codec currently only supports english")
+	}
 	data := c.check.AddECC(raw)
 	numWords := wordlenFromBytes(len(data))
+
+	if w, err := bip39.NewMnemonic(raw); err != nil {
+		return nil, err
+	} else {
+		return  strings.Split(w," "), nil
+	}
+
+	// TODO delete DEAD CODE:
+
+	// always add a checksum to the data
+	data = c.check.AddECC(raw)
+	numWords = wordlenFromBytes(len(data))
 
 	n2048 := big.NewInt(2048)
 	nData := big.NewInt(0).SetBytes(data)
@@ -131,12 +104,17 @@ func (c *WordCodec) BytesToWords(raw []byte) (words []string, err error) {
 	return words, nil
 }
 
+// TODO comment
 func (c *WordCodec) WordsToBytes(words []string) ([]byte, error) {
 	l := len(words)
 
 	if l == 0 {
 		return nil, errors.New("Didn't provide any words")
 	}
+
+	return bip39.MnemonicToByteArray(strings.Join(words, " "))
+
+	// TODO delete DEAD CODE:
 
 	n2048 := big.NewInt(2048)
 	nData := big.NewInt(0)
@@ -197,4 +175,34 @@ func (c *WordCodec) GetIndex(word string) (int, error) {
 		return -1, errors.Errorf("Unrecognized word: %s", word)
 	}
 	return rem, nil
+}
+// loadBank opens a wordlist file and returns all words inside
+func loadBank(bank string) ([]string, error) {
+	filename := "keys/words/wordlist/" + bank + ".txt"
+	words, err := wordlist.Asset(filename)
+	if err != nil {
+		return nil, err
+	}
+	wordsAll := strings.Split(strings.TrimSpace(string(words)), "\n")
+	return wordsAll, nil
+}
+
+// given this many bytes, we will produce this many words
+func wordlenFromBytes(numBytes int) int {
+	// 2048 words per bank, which is 2^11.
+	// 8 bits per byte, and we add +10 so it rounds up
+	return (8*numBytes + 10) / 11
+}
+
+// given this many words, we will produce this many bytes.
+// sometimes there are two possibilities.
+// if maybeShorter is true, then represents len OR len-1 bytes
+func bytelenFromWords(numWords int) (length int, maybeShorter bool) {
+	// calculate the max number of complete bytes we could store in this word
+	length = 11 * numWords / 8
+	// if one less byte would also generate this length, set maybeShorter
+	if wordlenFromBytes(length-1) == numWords {
+		maybeShorter = true
+	}
+	return
 }
