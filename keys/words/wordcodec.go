@@ -5,7 +5,7 @@ import (
 	"strings"
 
 	"github.com/pkg/errors"
-	"github.com/bartekn/go-bip39"
+	"github.com/Liamsi/go-bip39"
 
 	"github.com/tendermint/go-crypto/keys/words/wordlist"
 	"fmt"

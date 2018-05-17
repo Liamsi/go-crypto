@@ -9,6 +9,8 @@ import (
 	"github.com/Liamsi/go-bip39"
 
 	cmn "github.com/tendermint/tmlibs/common"
+	"crypto/sha256"
+	"encoding/hex"
 )
 
 func TestLengthCalc(t *testing.T) {
@@ -145,41 +147,94 @@ func getDiffWord(c *WordCodec, not string) string {
 	return w
 }
 
+// from bip39.js used in fundraiser:
+func deriveChecksumBits(entropyBuffer []byte) []byte {
+	ENT := len(entropyBuffer) * 8
+	CS := ENT / 32
+	h := sha256.New()
+	h.Write(entropyBuffer)
+	hash := h.Sum(nil)
+
+	return hash[0:CS]
+}
+
 func TestCheckTypoDetection(t *testing.T) {
 	assert, require := asrt.New(t), rqr.New(t)
 	// bip39 dependency only supports engl. so far:
-	banks := []string{"english" /*, "spanish", "japanese", "chinese_simplified"*/}
+	banks := []string{"english" /*, "spanish", "japanese", "chinese_simplified"*/ }
 
 	for _, bank := range banks {
 		codec, err := LoadCodec(bank)
 		require.Nil(err, "%s: %+v", bank, err)
-		for i := 0; i < 200; i++ {
+		for i := 0; i < 1000; i++ {
+			// try all allowed entropy lengths:
+			for entropyLen := 128; entropyLen <= 256; entropyLen += 32 {
 
-			data, _ := bip39.NewEntropy(256)
+				entropy, _ := bip39.NewEntropy(entropyLen)
+				if len(entropy) == len(bip39.AddChecksum(entropy)) {
+					//fmt.Printf("\n%v, %v\n", entropy, len(entropy))
+					//fmt.Printf("%v, %v\n", bip39.AddChecksum(entropy), len(bip39.AddChecksum(entropy)))
+				} else {
 
-			words, err := codec.BytesToWords(data)
-			assert.Nil(err, "%s: %+v", bank, err)
+					//fmt.Printf("\n%X, %v\n", entropy, len(entropy))
+					//fmt.Printf("%X, %v\n", bip39.AddChecksum(entropy), len(bip39.AddChecksum(entropy)))
 
-			good, err := codec.WordsToBytes(words)
-			assert.Nil(err, "%s: %+v", bank, err)
-			assert.Equal(bip39.AddChecksum(data), good, "iter: %v; bank=%s; data=%v", i, bank, data)
+				}
 
-			// now try some tweaks...
-			cut := words[1:]
-			_, err = codec.WordsToBytes(cut)
-			assert.NotNil(err, "%s: %s", bank, words)
+				words, err := codec.BytesToWords(entropy)
+				assert.Nil(err, "%s: %+v", bank, err)
 
-			// TODO with bip39, in some cases this actually passes (doesn't return an error);
-			// swap a word within the bank, should fail
-			before := words[3]
-			words[3] = getDiffWord(codec, words[3])
-			_, err = codec.WordsToBytes(words)
-			assert.NotNil(err, "iter: %v; %s: %s\ndata=%v\ncheckeddata=%v\nbefore=%v\nafter=%v", i, bank, words, data, bip39.AddChecksum(data), before, words[3])
+				good, err := codec.WordsToBytes(words)
+				assert.Nil(err, "%s: %+v", bank, err)
+				//data2 := append(entropy, deriveChecksumBits(entropy)...)
+				assert.Equal(entropy, good,
+					"iter: %v; bank=%s; entropy=%v, entropyHex=%X, len(bip39.AddChecksum(entropy))=%v, len(entropy)=%v,  deriveChecksumBits(entropy)=%X",
+					i, bank, entropy, entropy, len(bip39.AddChecksum(entropy)), len(entropy), deriveChecksumBits(entropy))
 
-			// put a random word here, must fail
-			words[3] = cmn.RandStr(10)
-			_, err = codec.WordsToBytes(words)
-			assert.NotNil(err, "iter: %v %s: %s", i, bank, words)
+				// now try some tweaks...
+				cut := words[1:]
+				_, err = codec.WordsToBytes(cut)
+				assert.NotNil(err, "%s: %s", bank, words)
+
+				// TODO with bip39, in some cases this actually passes (doesn't return an error);
+				// same with fundraiser
+				// here we fail about 40 of 10000 times, in the fundraisers JS about 5 times more often
+				// See: https://gist.github.com/Liamsi/18f175155aebc14f34d556530119daa3
+				// swap a word within the bank, should fail
+				// before := words[3]
+				// words[3] = getDiffWord(codec, words[3])
+				// _, err = codec.WordsToBytes(words)
+				//assert.NotNil(err, "iter: %v; %s: %s\nentropy=%v\ncheckeddata=%v\nbefore=%v\nafter=%v", i, bank, words, entropy, bip39.AddChecksum(entropy), before, words[3])
+
+				// put a random word here, must fail
+				words[3] = cmn.RandStr(10)
+				_, err = codec.WordsToBytes(words)
+				assert.NotNil(err, "iter: %v %s: %s", i, bank, words)
+			}
 		}
 	}
+}
+
+func TestSingleFailingEnt(t *testing.T) {
+	// TODO one of many previously failing examples (delete)
+	assert, require := asrt.New(t), rqr.New(t)
+	bank := "english"
+	codec, err := LoadCodec("english")
+	require.Nil(err, "%s: %+v", "english", err)
+	// generated using
+	// entropyLen := 224
+	// entropy, _ := bip39.NewEntropy(entropyLen)
+								 // 00D71943FB774AD8B6B0A5F1949CD00434ABD03B0C237BA324E956A7
+	entropy, _ := hex.DecodeString("00d71943fb774ad8b6b0a5f1949cd00434abd03b0c237ba324e956a7")
+	words, err := codec.BytesToWords(entropy)
+	assert.Nil(err, "%s: %+v", bank, err)
+
+	good, err := codec.WordsToBytes(words)
+	assert.Nil(err, "%s: %+v", bank, err)
+	//data2 := append(entropy, deriveChecksumBits(entropy)...)
+	assert.Equal(entropy, good,
+		"entropy=%v, entropyHex=%X, good=%X len(bip39.AddChecksum(entropy))=%v, len(entropy)=%v,  deriveChecksumBits(entropy)=%X",
+					 entropy, entropy, good, len(bip39.AddChecksum(entropy)), len(entropy), deriveChecksumBits(entropy))
+
+
 }
