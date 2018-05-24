@@ -54,7 +54,9 @@ func TestSimpleProof(t *testing.T) {
 
 		// Trail too long should make it fail
 		origAunts := proof.Aunts
-		proof.Aunts = append(proof.Aunts, cmn.RandBytes(32))
+		var rnd [tmhash.Size]byte
+		copy(rnd[:], cmn.RandBytes(tmhash.Size))
+		proof.Aunts = append(proof.Aunts, rnd)
 		{
 			ok = proof.Verify(i, total, itemHash, rootHash)
 			if ok {

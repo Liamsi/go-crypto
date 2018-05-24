@@ -29,10 +29,10 @@ import (
 )
 
 // Hash(left | right). The basic operation of the Merkle tree.
-func SimpleHashFromTwoHashes(left, right []byte) []byte {
+func SimpleHashFromTwoHashes(left, right [tmhash.Size]byte) []byte {
 	var hasher = tmhash.New()
-	hasher.Write(left)
-	hasher.Write(right)
+	hasher.Write(left[:])
+	hasher.Write(right[:])
 	return hasher.Sum(nil)
 }
 
@@ -71,6 +71,9 @@ func simpleHashFromHashes(hashes [][]byte) []byte {
 	default:
 		left := simpleHashFromHashes(hashes[:(len(hashes)+1)/2])
 		right := simpleHashFromHashes(hashes[(len(hashes)+1)/2:])
-		return SimpleHashFromTwoHashes(left, right)
+		var l, r [tmhash.Size]byte
+		copy(l[:], left)
+		copy(r[:], right)
+		return SimpleHashFromTwoHashes(l, r)
 	}
 }

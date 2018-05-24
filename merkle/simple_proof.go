@@ -3,16 +3,17 @@ package merkle
 import (
 	"bytes"
 	"fmt"
+	"github.com/tendermint/go-crypto/tmhash"
 )
 
 type SimpleProof struct {
-	Aunts [][]byte `json:"aunts"` // Hashes from leaf's sibling to a root's child.
+	Aunts [][tmhash.Size]byte `json:"aunts"` // Hashes from leaf's sibling to a root's child.
 }
 
 // proofs[0] is the proof for items[0].
 func SimpleProofsFromHashers(items []Hasher) (rootHash []byte, proofs []*SimpleProof) {
 	trails, rootSPN := trailsFromHashers(items)
-	rootHash = rootSPN.Hash
+	rootHash = rootSPN.Hash[:]
 	proofs = make([]*SimpleProof, len(items))
 	for i, trail := range trails {
 		proofs[i] = &SimpleProof{
@@ -39,8 +40,10 @@ func SimpleProofsFromMap(m map[string]Hasher) (rootHash []byte, proofs []*Simple
 // Verify that leafHash is a leaf hash of the simple-merkle-tree
 // which hashes to rootHash.
 func (sp *SimpleProof) Verify(index int, total int, leafHash []byte, rootHash []byte) bool {
-	computedHash := computeHashFromAunts(index, total, leafHash, sp.Aunts)
-	return computedHash != nil && bytes.Equal(computedHash, rootHash)
+	computedHash, err := computeHashFromAunts(index, total, leafHash, sp.Aunts)
+	fmt.Println(err)
+	fmt.Println(bytes.Equal(computedHash[:], rootHash))
+	return err != nil && bytes.Equal(computedHash[:], rootHash)
 }
 
 func (sp *SimpleProof) String() string {
@@ -58,35 +61,49 @@ func (sp *SimpleProof) StringIndented(indent string) string {
 // Use the leafHash and innerHashes to get the root merkle hash.
 // If the length of the innerHashes slice isn't exactly correct, the result is nil.
 // Recursive impl.
-func computeHashFromAunts(index int, total int, leafHash []byte, innerHashes [][]byte) []byte {
+func computeHashFromAunts(index int, total int, leafHash []byte, innerHashes [][tmhash.Size]byte) (h [tmhash.Size]byte, err error) {
 	if index >= total || index < 0 || total <= 0 {
-		return nil
+		err = fmt.Errorf("index out of bounds")
+		return
 	}
 	switch total {
 	case 0:
 		panic("Cannot call computeHashFromAunts() with 0 total")
 	case 1:
 		if len(innerHashes) != 0 {
-			return nil
+			err = fmt.Errorf("innerHashes is not empty")
+			return
 		}
-		return leafHash
+		copy(h[:], leafHash)
+		return
 	default:
 		if len(innerHashes) == 0 {
-			return nil
+			err = fmt.Errorf("innerHashes is empty")
+			return
 		}
 		numLeft := (total + 1) / 2
 		if index < numLeft {
-			leftHash := computeHashFromAunts(index, numLeft, leafHash, innerHashes[:len(innerHashes)-1])
-			if leftHash == nil {
-				return nil
+			leftHash, errI := computeHashFromAunts(index, numLeft, leafHash, innerHashes[:len(innerHashes)-1])
+			if errI != nil {
+				err = errI
+				return
 			}
-			return SimpleHashFromTwoHashes(leftHash, innerHashes[len(innerHashes)-1])
+			var ihs [tmhash.Size]byte
+			copy(ihs[:], innerHashes[len(innerHashes)-1][:])
+			th := SimpleHashFromTwoHashes(leftHash, ihs)
+			copy(h[:], th)
+			return
 		}
-		rightHash := computeHashFromAunts(index-numLeft, total-numLeft, leafHash, innerHashes[:len(innerHashes)-1])
-		if rightHash == nil {
-			return nil
+		rightHash, errI := computeHashFromAunts(index-numLeft, total-numLeft, leafHash, innerHashes[:len(innerHashes)-1])
+		if errI != nil {
+			err = errI
+			return
 		}
-		return SimpleHashFromTwoHashes(innerHashes[len(innerHashes)-1], rightHash)
+		var ihs [tmhash.Size]byte
+		copy(ihs[:], innerHashes[len(innerHashes)-1][:])
+		th := SimpleHashFromTwoHashes(rightHash, ihs)
+		copy(h[:], th)
+		return
 	}
 }
 
@@ -96,7 +113,7 @@ func computeHashFromAunts(index int, total int, leafHash []byte, innerHashes [][
 // node.Parent.Hash = hash(node.Hash, node.Right.Hash) or
 // hash(node.Left.Hash, node.Hash), depending on whether node is a left/right child.
 type SimpleProofNode struct {
-	Hash   []byte
+	Hash   [tmhash.Size]byte
 	Parent *SimpleProofNode
 	Left   *SimpleProofNode // Left sibling  (only one of Left,Right is set)
 	Right  *SimpleProofNode // Right sibling (only one of Left,Right is set)
@@ -104,9 +121,9 @@ type SimpleProofNode struct {
 
 // Starting from a leaf SimpleProofNode, FlattenAunts() will return
 // the inner hashes for the item corresponding to the leaf.
-func (spn *SimpleProofNode) FlattenAunts() [][]byte {
+func (spn *SimpleProofNode) FlattenAunts() [][tmhash.Size]byte {
 	// Nonrecursive impl.
-	innerHashes := [][]byte{}
+	innerHashes := [][tmhash.Size]byte{}
 	for spn != nil {
 		if spn.Left != nil {
 			innerHashes = append(innerHashes, spn.Left.Hash)
@@ -128,13 +145,17 @@ func trailsFromHashers(items []Hasher) (trails []*SimpleProofNode, root *SimpleP
 	case 0:
 		return nil, nil
 	case 1:
-		trail := &SimpleProofNode{items[0].Hash(), nil, nil, nil}
+		var h [tmhash.Size]byte
+		copy(h[:], items[0].Hash())
+		trail := &SimpleProofNode{h, nil, nil, nil}
 		return []*SimpleProofNode{trail}, trail
 	default:
 		lefts, leftRoot := trailsFromHashers(items[:(len(items)+1)/2])
 		rights, rightRoot := trailsFromHashers(items[(len(items)+1)/2:])
 		rootHash := SimpleHashFromTwoHashes(leftRoot.Hash, rightRoot.Hash)
-		root := &SimpleProofNode{rootHash, nil, nil, nil}
+		var rh [tmhash.Size]byte
+		copy(rh[:], rootHash)
+		root := &SimpleProofNode{rh, nil, nil, nil}
 		leftRoot.Parent = root
 		leftRoot.Right = rightRoot
 		rightRoot.Parent = root

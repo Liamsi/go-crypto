@@ -71,7 +71,10 @@ func (sm *simpleMap) KVPairs() cmn.KVPairs {
 type kvPair cmn.KVPair
 
 func (kv kvPair) Hash() []byte {
-	return SimpleHashFromTwoHashes(kv.Key, kv.Value)
+	var k, v [tmhash.Size]byte
+	copy(k[:], kv.Key)
+	copy(v[:], kv.Value)
+	return SimpleHashFromTwoHashes(k, v)
 }
 
 func hashKVPairs(kvs cmn.KVPairs) []byte {
