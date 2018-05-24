@@ -60,6 +60,12 @@ func SimpleHashFromMap(m map[string]Hasher) []byte {
 
 //----------------------------------------------------------------
 
+func SimpleHashFromBytes(bz []byte) []byte {
+	hasher := tmhash.New()
+	hasher.Write(bz)
+	return hasher.Sum(nil)
+}
+
 // Expects hashes!
 func simpleHashFromHashes(hashes [][]byte) []byte {
 	// Recursive impl.

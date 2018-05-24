@@ -15,39 +15,39 @@ func (str strHasher) Hash() []byte {
 
 func TestSimpleMap(t *testing.T) {
 	{
-		db := NewSimpleMap()
+		db := newSimpleMap()
 		db.Set("key1", strHasher("value1"))
-		assert.Equal(t, "3dafc06a52039d029be57c75c9d16356a4256ef4", fmt.Sprintf("%x", db.Hash()), "Hash didn't match")
+		assert.Equal(t, "f544bcb4338dab8c5d5da4e8dfde617691da735c", fmt.Sprintf("%x", db.Hash()), "Hash didn't match")
 	}
 	{
-		db := NewSimpleMap()
+		db := newSimpleMap()
 		db.Set("key1", strHasher("value2"))
-		assert.Equal(t, "03eb5cfdff646bc4e80fec844e72fd248a1c6b2c", fmt.Sprintf("%x", db.Hash()), "Hash didn't match")
+		assert.Equal(t, "8a275766d89cb1788357b197b0aad91f4caf09fb", fmt.Sprintf("%x", db.Hash()), "Hash didn't match")
 	}
 	{
-		db := NewSimpleMap()
+		db := newSimpleMap()
 		db.Set("key1", strHasher("value1"))
 		db.Set("key2", strHasher("value2"))
-		assert.Equal(t, "acc3971eab8513171cc90ce8b74f368c38f9657d", fmt.Sprintf("%x", db.Hash()), "Hash didn't match")
+		assert.Equal(t, "4a768df000f38b9d50d504b455c3a089b9c365fc", fmt.Sprintf("%x", db.Hash()), "Hash didn't match")
 	}
 	{
-		db := NewSimpleMap()
+		db := newSimpleMap()
 		db.Set("key2", strHasher("value2")) // NOTE: out of order
 		db.Set("key1", strHasher("value1"))
-		assert.Equal(t, "acc3971eab8513171cc90ce8b74f368c38f9657d", fmt.Sprintf("%x", db.Hash()), "Hash didn't match")
+		assert.Equal(t, "4a768df000f38b9d50d504b455c3a089b9c365fc", fmt.Sprintf("%x", db.Hash()), "Hash didn't match")
 	}
 	{
-		db := NewSimpleMap()
+		db := newSimpleMap()
 		db.Set("key1", strHasher("value1"))
 		db.Set("key2", strHasher("value2"))
 		db.Set("key3", strHasher("value3"))
-		assert.Equal(t, "0cd117ad14e6cd22edcd9aa0d84d7063b54b862f", fmt.Sprintf("%x", db.Hash()), "Hash didn't match")
+		assert.Equal(t, "0681dc46eee71cf1e101bba27e865bcf27cfd85c", fmt.Sprintf("%x", db.Hash()), "Hash didn't match")
 	}
 	{
-		db := NewSimpleMap()
+		db := newSimpleMap()
 		db.Set("key2", strHasher("value2")) // NOTE: out of order
 		db.Set("key1", strHasher("value1"))
 		db.Set("key3", strHasher("value3"))
-		assert.Equal(t, "0cd117ad14e6cd22edcd9aa0d84d7063b54b862f", fmt.Sprintf("%x", db.Hash()), "Hash didn't match")
+		assert.Equal(t, "0681dc46eee71cf1e101bba27e865bcf27cfd85c", fmt.Sprintf("%x", db.Hash()), "Hash didn't match")
 	}
 }
