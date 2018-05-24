@@ -41,8 +41,12 @@ func SimpleProofsFromMap(m map[string]Hasher) (rootHash []byte, proofs []*Simple
 // which hashes to rootHash.
 func (sp *SimpleProof) Verify(index int, total int, leafHash []byte, rootHash []byte) bool {
 	computedHash, err := computeHashFromAunts(index, total, leafHash, sp.Aunts)
-	fmt.Println(err)
-	fmt.Println(bytes.Equal(computedHash[:], rootHash))
+	if !bytes.Equal(computedHash[:], rootHash) {
+		fmt.Println(index, total, leafHash, sp.Aunts)
+		fmt.Println(err)
+		fmt.Println(computedHash[:])
+		fmt.Println(rootHash)
+	}
 	return err != nil && bytes.Equal(computedHash[:], rootHash)
 }
 
@@ -101,7 +105,7 @@ func computeHashFromAunts(index int, total int, leafHash []byte, innerHashes [][
 		}
 		var ihs [tmhash.Size]byte
 		copy(ihs[:], innerHashes[len(innerHashes)-1][:])
-		th := SimpleHashFromTwoHashes(rightHash, ihs)
+		th := SimpleHashFromTwoHashes(ihs, rightHash)
 		copy(h[:], th)
 		return
 	}
