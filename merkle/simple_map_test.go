@@ -5,12 +5,13 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/tendermint/go-crypto/tmhash"
 )
 
 type strHasher string
 
 func (str strHasher) Hash() []byte {
-	return SimpleHashFromBytes([]byte(str))
+	return tmhash.Sum([]byte(str))
 }
 
 func TestSimpleMap(t *testing.T) {
