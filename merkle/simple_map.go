@@ -20,7 +20,7 @@ func newSimpleMap() *simpleMap {
 	}
 }
 
-// Hash the key and value and append to the kv pairs
+// Set hashes the key and value and appends it to the kv pairs.
 func (sm *simpleMap) Set(key string, value Hasher) {
 	sm.sorted = false
 
@@ -38,7 +38,7 @@ func (sm *simpleMap) Set(key string, value Hasher) {
 	})
 }
 
-// Merkle root hash of items sorted by key
+// Hash Merkle root hash of items sorted by key
 // (UNSTABLE: and by value too if duplicate key).
 func (sm *simpleMap) Hash() []byte {
 	sm.Sort()
@@ -65,13 +65,22 @@ func (sm *simpleMap) KVPairs() cmn.KVPairs {
 //----------------------------------------
 
 // A local extension to KVPair that can be hashed.
-// XXX: key and value must already be hashed -
-// otherwise the kvpair ("abc", "def") would give the same result
-// as ("ab", "cdef") since we're not using length-prefixing.
+// XXX: key and value do not need to already be hashed -
+// the kvpair ("abc", "def") would not give the same result
+// as ("ab", "cdef") as we're using length-prefixing.
 type kvPair cmn.KVPair
 
 func (kv kvPair) Hash() []byte {
-	return SimpleHashFromTwoHashes(kv.Key, kv.Value)
+	hasher := tmhash.New()
+	err := encodeByteSlice(hasher, kv.Key)
+	if err != nil {
+			panic(err)
+		}
+	err = encodeByteSlice(hasher, kv.Value)
+	if err != nil {
+			panic(err)
+		}
+	return hasher.Sum(nil)
 }
 
 func hashKVPairs(kvs cmn.KVPairs) []byte {
