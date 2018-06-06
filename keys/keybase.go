@@ -5,55 +5,57 @@ import (
 	"strings"
 
 	"github.com/pkg/errors"
-	crypto "github.com/tendermint/go-crypto"
-	"github.com/tendermint/go-crypto/keys/words"
+	"github.com/tendermint/go-crypto"
 	dbm "github.com/tendermint/tmlibs/db"
+	"github.com/tendermint/go-crypto/keys/bip39"
 )
 
-// dbKeybase combines encyption and storage implementation to provide
+// dbKeybase combines encryption and storage implementation to provide
 // a full-featured key manager
 type dbKeybase struct {
 	db    dbm.DB
-	codec words.Codec
+	codec bip39.WordCodec
 }
 
-func New(db dbm.DB, codec words.Codec) dbKeybase {
+func New(db dbm.DB, codec bip39.WordCodec) dbKeybase {
 	return dbKeybase{
 		db:    db,
 		codec: codec,
 	}
 }
 
+// BIP44Prefix is the parts of the BIP32 HD path that are fixed by what we used during the fundraiser.
+const BIP44Prefix = "m/44'/118'/"
+
 var _ Keybase = dbKeybase{}
 
 // Create generates a new key and persists it to storage, encrypted
-// using the passphrase.  It returns the generated seedphrase
-// (mnemonic) and the key Info.  It returns an error if it fails to
+// using the provided password.
+// It returns the generated mnemonic and the key Info.
+// It returns an error if it fails to
 // generate a key for the given algo type, or if another key is
 // already stored under the same name.
-func (kb dbKeybase) Create(name, passphrase string, algo CryptoAlgo) (Info, string, error) {
-	// NOTE: secret is SHA256 hashed by secp256k1 and ed25519.
-	// 16 byte secret corresponds to 12 BIP39 words.
-	// XXX: Ledgers use 24 words now - should we ?
-	secret := crypto.CRandBytes(16)
-	priv, err := generate(algo, secret)
-	if err != nil {
-		return Info{}, "", err
+func (kb dbKeybase) Create(name, language, passphrase string, algo CryptoAlgo) (info Info, mnemonic string, err error) {
+	if algo != AlgoSecp256k1 {
+		err = fmt.Errorf("currently only Secp256k1 are supported as required by bip39/bip44, requested %s", algo)
+		return
 	}
 
-	// encrypt and persist the key
-	info := kb.writeKey(priv, name, passphrase)
+	cdc, err := bip39.LoadCodec(language)
+	if err != nil {
+		return
+	}
+	// default number of words (24):
+	mnemonicS, err := cdc.NewMnemonic(bip39.FreshKey)
+	if err != nil {
+		return
+	}
+	// TODO(ismail): we have to be careful with the separator in non-ltr languages. Ideally, our package should provide
+	// a helper function for that
+	mnemonic = strings.Join(mnemonicS, " ")
+	seed := cdc.MnemonicToSeed(mnemonic)
 
-	// we append the type byte to the serialized secret to help with
-	// recovery
-	// ie [secret] = [type] + [secret]
-	typ := cryptoAlgoToByte(algo)
-	secret = append([]byte{typ}, secret...)
-
-	// return the mnemonic phrase
-	words, err := kb.codec.BytesToWords(secret)
-	seed := strings.Join(words, " ")
-	return info, seed, err
+	return
 }
 
 // Recover converts a seedphrase to a private key and persists it,
@@ -61,7 +63,7 @@ func (kb dbKeybase) Create(name, passphrase string, algo CryptoAlgo) (Info, stri
 // seedphrase is input not output.
 func (kb dbKeybase) Recover(name, passphrase, seedphrase string) (Info, error) {
 	words := strings.Split(strings.TrimSpace(seedphrase), " ")
-	secret, err := kb.codec.WordsToBytes(words)
+	secret, err := kb.codec.WordsToSeed(words)
 	if err != nil {
 		return Info{}, err
 	}

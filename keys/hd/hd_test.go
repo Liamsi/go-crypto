@@ -112,7 +112,7 @@ func ifExit(err error, n int) {
 
 func gocrypto(seed []byte) ([]byte, []byte, []byte) {
 
-	_, priv, ch := ComputeMastersFromSeed(string(seed))
+	_, priv, ch := ComputeMastersFromSeed(seed)
 
 	privBytes := DerivePrivateKeyForPath(
 		HexDecode(priv),

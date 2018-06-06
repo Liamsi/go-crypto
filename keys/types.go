@@ -7,7 +7,7 @@ import (
 // Keybase allows simple CRUD on a keystore, as an aid to signing
 type Keybase interface {
 	// Sign some bytes
-	Sign(name, passphrase string, msg []byte) (crypto.Signature, crypto.PubKey, error)
+	Sign(name, passwd string, msg []byte) (crypto.Signature, crypto.PubKey, error)
 	// Create a new keypair
 	Create(name, passphrase string, algo CryptoAlgo) (info Info, seed string, err error)
 	// Recover takes a seedphrase and loads in the key

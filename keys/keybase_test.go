@@ -20,7 +20,7 @@ func TestKeyManagement(t *testing.T) {
 	// make the storage with reasonable defaults
 	cstore := keys.New(
 		dbm.NewMemDB(),
-		words.MustLoadCodec("english"),
+		bip39.MustLoadCodec("english"),
 	)
 
 	algo := keys.AlgoEd25519
@@ -87,7 +87,7 @@ func TestSignVerify(t *testing.T) {
 	// make the storage with reasonable defaults
 	cstore := keys.New(
 		dbm.NewMemDB(),
-		words.MustLoadCodec("english"),
+		bip39.MustLoadCodec("english"),
 	)
 	algo := keys.AlgoSecp256k1
 
@@ -229,7 +229,7 @@ func TestExportImport(t *testing.T) {
 	db := dbm.NewMemDB()
 	cstore := keys.New(
 		db,
-		words.MustLoadCodec("english"),
+		bip39.MustLoadCodec("english"),
 	)
 
 	info, _, err := cstore.Create("john", "passphrase", keys.AlgoEd25519)
@@ -261,7 +261,7 @@ func TestExportImportPubKey(t *testing.T) {
 	db := dbm.NewMemDB()
 	cstore := keys.New(
 		db,
-		words.MustLoadCodec("english"),
+		bip39.MustLoadCodec("english"),
 	)
 
 	// Create a private-public key pair and ensure consistency
@@ -304,7 +304,7 @@ func TestAdvancedKeyManagement(t *testing.T) {
 	// make the storage with reasonable defaults
 	cstore := keys.New(
 		dbm.NewMemDB(),
-		words.MustLoadCodec("english"),
+		bip39.MustLoadCodec("english"),
 	)
 
 	algo := keys.AlgoSecp256k1
@@ -354,7 +354,7 @@ func TestSeedPhrase(t *testing.T) {
 	// make the storage with reasonable defaults
 	cstore := keys.New(
 		dbm.NewMemDB(),
-		words.MustLoadCodec("english"),
+		bip39.MustLoadCodec("english"),
 	)
 
 	algo := keys.AlgoEd25519
@@ -385,7 +385,7 @@ func ExampleNew() {
 	// Select the encryption and storage for your cryptostore
 	cstore := keys.New(
 		dbm.NewMemDB(),
-		words.MustLoadCodec("english"),
+		bip39.MustLoadCodec("english"),
 	)
 	ed := keys.AlgoEd25519
 	sec := keys.AlgoSecp256k1

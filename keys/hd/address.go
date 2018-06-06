@@ -88,9 +88,9 @@ func SignBTCMessage(privKey string, message string, compress bool) string {
 }
 
 // ComputeMastersFromSeed returns the master public key, master secret, and chain code in hex.
-func ComputeMastersFromSeed(seed string) (string, string, string) {
-	key, data := []byte("Bitcoin seed"), []byte(seed)
-	secret, chain := I64(key, data)
+func ComputeMastersFromSeed(seed []byte) (string, string, string) {
+	masterSecret := []byte("Bitcoin seed")
+	secret, chain := I64(masterSecret, seed)
 	pubKeyBytes := PubKeyBytesFromPrivKeyBytes(secret, true)
 	return HexEncode(pubKeyBytes), HexEncode(secret), HexEncode(chain)
 }
