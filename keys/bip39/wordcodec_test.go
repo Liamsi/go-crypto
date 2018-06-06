@@ -7,11 +7,9 @@ import (
 )
 
 func TestWordCodec_NewMnemonic(t *testing.T) {
-	c, _ :=  LoadCodec("english")
-	_, err := c.NewMnemonic(FundRaiser)
+	_, err := NewMnemonic(FundRaiser)
 	assert.NoError(t, err, "unexpected error generating fundraiser mnemonic")
 
-	_, err = c.NewMnemonic(FreshKey)
+	_, err = NewMnemonic(FreshKey)
 	assert.NoError(t, err, "unexpected error generating new 24-word mnemonic")
-
 }

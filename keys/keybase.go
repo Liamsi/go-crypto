@@ -8,19 +8,18 @@ import (
 	"github.com/tendermint/go-crypto"
 	dbm "github.com/tendermint/tmlibs/db"
 	"github.com/tendermint/go-crypto/keys/bip39"
+	"github.com/tendermint/go-crypto/keys/hd"
 )
 
 // dbKeybase combines encryption and storage implementation to provide
 // a full-featured key manager
 type dbKeybase struct {
 	db    dbm.DB
-	codec bip39.WordCodec
 }
 
-func New(db dbm.DB, codec bip39.WordCodec) dbKeybase {
+func New(db dbm.DB) dbKeybase {
 	return dbKeybase{
 		db:    db,
-		codec: codec,
 	}
 }
 
@@ -35,26 +34,23 @@ var _ Keybase = dbKeybase{}
 // It returns an error if it fails to
 // generate a key for the given algo type, or if another key is
 // already stored under the same name.
-func (kb dbKeybase) Create(name, language, passphrase string, algo CryptoAlgo) (info Info, mnemonic string, err error) {
+func (kb dbKeybase) Create(name, language, passwd string, algo CryptoAlgo) (info *Info, mnemonic string, err error) {
 	if algo != AlgoSecp256k1 {
 		err = fmt.Errorf("currently only Secp256k1 are supported as required by bip39/bip44, requested %s", algo)
 		return
 	}
 
-	cdc, err := bip39.LoadCodec(language)
-	if err != nil {
-		return
-	}
 	// default number of words (24):
-	mnemonicS, err := cdc.NewMnemonic(bip39.FreshKey)
+	mnemonicS, err := bip39.NewMnemonic(bip39.FreshKey)
 	if err != nil {
 		return
 	}
 	// TODO(ismail): we have to be careful with the separator in non-ltr languages. Ideally, our package should provide
 	// a helper function for that
 	mnemonic = strings.Join(mnemonicS, " ")
-	seed := cdc.MnemonicToSeed(mnemonic)
-
+	seed := bip39.MnemonicToSeed(mnemonic)
+	// TODO(ismail): use seed to create a key
+	hd.ComputeMastersFromSeed(seed)
 	return
 }
 
@@ -62,25 +58,8 @@ func (kb dbKeybase) Create(name, language, passphrase string, algo CryptoAlgo) (
 // encrypted with the given passphrase.  Functions like Create, but
 // seedphrase is input not output.
 func (kb dbKeybase) Recover(name, passphrase, seedphrase string) (Info, error) {
-	words := strings.Split(strings.TrimSpace(seedphrase), " ")
-	secret, err := kb.codec.WordsToSeed(words)
-	if err != nil {
-		return Info{}, err
-	}
 
-	// secret is comprised of the actual secret with the type
-	// appended.
-	// ie [secret] = [type] + [secret]
-	typ, secret := secret[0], secret[1:]
-	algo := byteToCryptoAlgo(typ)
-	priv, err := generate(algo, secret)
-	if err != nil {
-		return Info{}, err
-	}
-
-	// encrypt and persist key.
-	public := kb.writeKey(priv, name, passphrase)
-	return public, err
+	return Info{}, nil
 }
 
 // List returns the keys from storage in alphabetical order.
@@ -94,13 +73,13 @@ func (kb dbKeybase) List() ([]Info, error) {
 		if err != nil {
 			return nil, err
 		}
-		res = append(res, info)
+		res = append(res, *info)
 	}
 	return res, nil
 }
 
 // Get returns the public information about one key.
-func (kb dbKeybase) Get(name string) (Info, error) {
+func (kb dbKeybase) Get(name string) (*Info, error) {
 	bs := kb.db.Get(infoKey(name))
 	return readInfo(bs)
 }

@@ -9,11 +9,11 @@ type Keybase interface {
 	// Sign some bytes
 	Sign(name, passwd string, msg []byte) (crypto.Signature, crypto.PubKey, error)
 	// Create a new keypair
-	Create(name, passphrase string, algo CryptoAlgo) (info Info, seed string, err error)
+	Create(name, language, passwd string, algo CryptoAlgo) (info *Info, seed string, err error)
 	// Recover takes a seedphrase and loads in the key
 	Recover(name, passphrase, seedphrase string) (info Info, erro error)
 	List() ([]Info, error)
-	Get(name string) (Info, error)
+	Get(name string) (*Info, error)
 	Update(name, oldpass, newpass string) error
 	Delete(name, passphrase string) error
 
@@ -51,7 +51,8 @@ func (i Info) bytes() []byte {
 	return bz
 }
 
-func readInfo(bz []byte) (info Info, err error) {
-	err = cdc.UnmarshalBinaryBare(bz, &info)
+func readInfo(bz []byte) (info *Info, err error) {
+	info = &Info{}
+	err = cdc.UnmarshalBinaryBare(bz, info)
 	return
 }

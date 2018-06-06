@@ -88,11 +88,11 @@ func SignBTCMessage(privKey string, message string, compress bool) string {
 }
 
 // ComputeMastersFromSeed returns the master public key, master secret, and chain code in hex.
-func ComputeMastersFromSeed(seed []byte) (string, string, string) {
+func ComputeMastersFromSeed(seed []byte) (secret []byte, pubKey []byte, chainCode []byte) {
 	masterSecret := []byte("Bitcoin seed")
-	secret, chain := I64(masterSecret, seed)
-	pubKeyBytes := PubKeyBytesFromPrivKeyBytes(secret, true)
-	return HexEncode(pubKeyBytes), HexEncode(secret), HexEncode(chain)
+	secret, chainCode = I64(masterSecret, seed)
+	pubKey = PubKeyBytesFromPrivKeyBytes(secret, true)
+	return
 }
 
 // ComputeWIF returns the privKey in Wallet Import Format.
@@ -137,7 +137,7 @@ func DerivePrivateKeyForPath(privKeyBytes []byte, chainCode []byte, path string)
 			panic(err)
 		}
 		if i < 0 {
-			panic(errors.New("index too large."))
+			panic(errors.New("index too large"))
 		}
 		data, chainCode = DerivePrivateKey(data, chainCode, uint32(i), prime)
 		//printKeyInfo(data, nil, chain)
