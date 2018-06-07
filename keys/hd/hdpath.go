@@ -18,7 +18,7 @@ import (
 
 // BIP44Prefix is the parts of the BIP32 HD path that are fixed by what we used during the fundraiser.
 const (
-	BIP44Prefix        = "m/44'/118'/"
+	BIP44Prefix        = "44'/118'/"
 	FullFundraiserPath = BIP44Prefix + "0'/0/0"
 )
 
@@ -40,12 +40,15 @@ func NewParams(purpose, coinType, account uint32, change bool, addressIdx uint32
 	}
 }
 
-func NewFundraiserParams(account uint32, change bool, addressIdx uint32) *BIP44Params {
+func NewFundraiserParams(account uint32, addressIdx uint32) *BIP44Params {
 	return &BIP44Params{
-		purpose:    44,
-		coinType:   118,
-		account:    account,
-		change:     change,
+		// the following 2 params are fixed:
+		// m/44'/118'/
+		purpose:  44,
+		coinType: 118,
+		account:  account,
+		// we do not use the change param:
+		change:     false,
 		addressIdx: addressIdx,
 	}
 }
