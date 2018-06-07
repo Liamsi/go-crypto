@@ -23,29 +23,6 @@ func New(db dbm.DB) dbKeybase {
 	}
 }
 
-type bip44Params struct {
-	account    uint32
-	change     bool
-	addressIdx uint32
-}
-
-func (p bip44Params) String() string {
-	var changeStr string
-	if p.change {
-		changeStr = "1"
-	} else {
-		changeStr = "0"
-	}
-	// m / purpose' / coin_type' / account' / change / address_index
-	return BIP44Prefix + fmt.Sprintf("%d'/%s/%d", p.account, changeStr, p.addressIdx)
-}
-
-// BIP44Prefix is the parts of the BIP32 HD path that are fixed by what we used during the fundraiser.
-const (
-	BIP44Prefix = "m/44'/118'/"
-	FullFundraiserPath = BIP44Prefix + "0'/0/0"
-)
-
 var _ Keybase = dbKeybase{}
 
 // Create generates a new key and persists it to storage, encrypted
@@ -69,7 +46,7 @@ func (kb dbKeybase) Create(name, language, passwd string, algo CryptoAlgo) (info
 	// a helper function for that
 	mnemonic = strings.Join(mnemonicS, " ")
 	seed := bip39.MnemonicToSeed(mnemonic)
-	info = kb.persistDerivedKey(seed, passwd, name, FullFundraiserPath)
+	info = kb.persistDerivedKey(seed, passwd, name, hd.FullFundraiserPath)
 	return
 }
 
@@ -86,13 +63,14 @@ func (kb dbKeybase) Recover(name, mnemonic, passwd string) (info *Info, err erro
 	if err != nil {
 		return
 	}
-	info = kb.persistDerivedKey(seed, passwd, name, FullFundraiserPath)
+	info = kb.persistDerivedKey(seed, passwd, name, hd.FullFundraiserPath)
 	return
 }
 
 func (kb dbKeybase) Derive(name, mnemonic, passwd string,
 	account uint32, change bool, addressIdx uint32) (info *Info, err error) {
-	params := bip44Params{account:account, change:change, addressIdx:addressIdx}
+
+	params := hd.NewFundraiserParams(account, change, addressIdx)
 	seed, err := bip39.MnemonicToSeedWithErrChecking(mnemonic)
 	if err != nil {
 		return
@@ -105,7 +83,7 @@ func (kb dbKeybase) Derive(name, mnemonic, passwd string,
 func (kb *dbKeybase) persistDerivedKey(seed []byte, passwd, name, fullHdPath string) (info *Info) {
 	// create master key and derive first key:
 	masterPriv, ch := hd.ComputeMastersFromSeed(seed)
-	derivedPriv := hd.DerivePrivateKeyForPath(masterPriv, ch, "44'/118'/0'/0/0")
+	derivedPriv := hd.DerivePrivateKeyForPath(masterPriv, ch, fullHdPath)
 
 	// if we have a password, use it to encrypt the private key and store it
 	// else store the public key only

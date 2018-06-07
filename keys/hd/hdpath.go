@@ -1,8 +1,6 @@
+// Package hd provides bip44 functionality.
+// TODO(ismail): proper documentation
 package hd
-
-// XXX This package doesn't work with our address scheme,
-// XXX and it probably doesn't work for our other pubkey types.
-// XXX Fix it up to be more general but compatible.
 
 import (
 	"crypto/hmac"
@@ -18,6 +16,52 @@ import (
 	"github.com/tendermint/go-crypto"
 )
 
+// BIP44Prefix is the parts of the BIP32 HD path that are fixed by what we used during the fundraiser.
+const (
+	BIP44Prefix        = "m/44'/118'/"
+	FullFundraiserPath = BIP44Prefix + "0'/0/0"
+)
+
+type BIP44Params struct {
+	purpose    uint32
+	coinType   uint32
+	account    uint32
+	change     bool
+	addressIdx uint32
+}
+
+func NewParams(purpose, coinType, account uint32, change bool, addressIdx uint32) *BIP44Params {
+	return &BIP44Params{
+		purpose:    purpose,
+		coinType:   coinType,
+		account:    account,
+		change:     change,
+		addressIdx: addressIdx,
+	}
+}
+
+func NewFundraiserParams(account uint32, change bool, addressIdx uint32) *BIP44Params {
+	return &BIP44Params{
+		purpose:    44,
+		coinType:   118,
+		account:    account,
+		change:     change,
+		addressIdx: addressIdx,
+	}
+}
+
+func (p BIP44Params) String() string {
+	var changeStr string
+	if p.change {
+		changeStr = "1"
+	} else {
+		changeStr = "0"
+	}
+	// m / purpose' / coin_type' / account' / change / address_index
+	return fmt.Sprintf("%d'/%d'/%d'/%s/%d",
+		p.purpose, p.coinType, p.account, changeStr, p.addressIdx)
+}
+
 // ComputeMastersFromSeed returns the master public key, master secret, and chain code in hex.
 func ComputeMastersFromSeed(seed []byte) (secret [32]byte, chainCode [32]byte) {
 	masterSecret := []byte("Bitcoin seed")
@@ -25,8 +69,6 @@ func ComputeMastersFromSeed(seed []byte) (secret [32]byte, chainCode [32]byte) {
 
 	return
 }
-
-//-------------------------------------------------------------------
 
 // DerivePrivateKeyForPath derives the private key by following the path from privKeyBytes,
 // using the given chainCode.
@@ -57,7 +99,6 @@ func DerivePrivateKeyForPath(privKeyBytes [32]byte, chainCode [32]byte, path str
 	return derivedKey
 }
 
-
 // DerivePrivateKey derives the private key with index and chainCode.
 // If prime is true, the derivation is 'hardened'.
 // It returns the new private key and new chain code.
@@ -76,8 +117,6 @@ func DerivePrivateKey(privKeyBytes [32]byte, chainCode [32]byte, index uint32, p
 	return x, chainCode2
 }
 
-
-
 // modular big endian addition
 func addScalars(a []byte, b []byte) [32]byte {
 	aInt := new(big.Int).SetBytes(a)
@@ -94,8 +133,6 @@ func uint32ToBytes(i uint32) []byte {
 	binary.BigEndian.PutUint32(b[:], i)
 	return b[:]
 }
-
-//-------------------------------------------------------------------
 
 // i64 returns the two halfs of the SHA512 HMAC of key and data.
 func i64(key []byte, data []byte) (IL [32]byte, IR [32]byte) {
