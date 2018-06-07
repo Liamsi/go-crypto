@@ -11,7 +11,8 @@ type Keybase interface {
 	// Create a new keypair
 	Create(name, language, passwd string, algo CryptoAlgo) (info *Info, seed string, err error)
 	// Recover takes a seedphrase and loads in the key
-	Recover(name, passphrase, seedphrase string) (info Info, erro error)
+	Recover(name, mnemonic, seedphrase string) (info *Info, err error)
+	Derive(name, mnemonic, passwd string, account uint32, change bool, addressIdx uint32) (*Info, error)
 	List() ([]Info, error)
 	Get(name string) (*Info, error)
 	Update(name, oldpass, newpass string) error

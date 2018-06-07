@@ -6,25 +6,45 @@ import (
 
 	"github.com/pkg/errors"
 	"github.com/tendermint/go-crypto"
-	dbm "github.com/tendermint/tmlibs/db"
 	"github.com/tendermint/go-crypto/keys/bip39"
 	"github.com/tendermint/go-crypto/keys/hd"
+	dbm "github.com/tendermint/tmlibs/db"
 )
 
 // dbKeybase combines encryption and storage implementation to provide
 // a full-featured key manager
 type dbKeybase struct {
-	db    dbm.DB
+	db dbm.DB
 }
 
 func New(db dbm.DB) dbKeybase {
 	return dbKeybase{
-		db:    db,
+		db: db,
 	}
 }
 
+type bip44Params struct {
+	account    uint32
+	change     bool
+	addressIdx uint32
+}
+
+func (p bip44Params) String() string {
+	var changeStr string
+	if p.change {
+		changeStr = "1"
+	} else {
+		changeStr = "0"
+	}
+	// m / purpose' / coin_type' / account' / change / address_index
+	return BIP44Prefix + fmt.Sprintf("%d'/%s/%d", p.account, changeStr, p.addressIdx)
+}
+
 // BIP44Prefix is the parts of the BIP32 HD path that are fixed by what we used during the fundraiser.
-const BIP44Prefix = "m/44'/118'/"
+const (
+	BIP44Prefix = "m/44'/118'/"
+	FullFundraiserPath = BIP44Prefix + "0'/0/0"
+)
 
 var _ Keybase = dbKeybase{}
 
@@ -49,17 +69,54 @@ func (kb dbKeybase) Create(name, language, passwd string, algo CryptoAlgo) (info
 	// a helper function for that
 	mnemonic = strings.Join(mnemonicS, " ")
 	seed := bip39.MnemonicToSeed(mnemonic)
-	// TODO(ismail): use seed to create a key
-	hd.ComputeMastersFromSeed(seed)
+	info = kb.persistDerivedKey(seed, passwd, name, FullFundraiserPath)
 	return
 }
 
 // Recover converts a seedphrase to a private key and persists it,
 // encrypted with the given passphrase.  Functions like Create, but
 // seedphrase is input not output.
-func (kb dbKeybase) Recover(name, passphrase, seedphrase string) (Info, error) {
+func (kb dbKeybase) Recover(name, mnemonic, passwd string) (info *Info, err error) {
+	words := strings.Split(mnemonic, " ")
+	if len(words) != 12 {
+		err = fmt.Errorf("recovering only works with 12 word (fundraiser) mnemonics, got: %v words", len(words))
+		return
+	}
+	seed, err := bip39.MnemonicToSeedWithErrChecking(mnemonic)
+	if err != nil {
+		return
+	}
+	info = kb.persistDerivedKey(seed, passwd, name, FullFundraiserPath)
+	return
+}
 
-	return Info{}, nil
+func (kb dbKeybase) Derive(name, mnemonic, passwd string,
+	account uint32, change bool, addressIdx uint32) (info *Info, err error) {
+	params := bip44Params{account:account, change:change, addressIdx:addressIdx}
+	seed, err := bip39.MnemonicToSeedWithErrChecking(mnemonic)
+	if err != nil {
+		return
+	}
+	info = kb.persistDerivedKey(seed, passwd, name, params.String())
+
+	return
+}
+
+func (kb *dbKeybase) persistDerivedKey(seed []byte, passwd, name, fullHdPath string) (info *Info) {
+	// create master key and derive first key:
+	masterPriv, ch := hd.ComputeMastersFromSeed(seed)
+	derivedPriv := hd.DerivePrivateKeyForPath(masterPriv, ch, "44'/118'/0'/0/0")
+
+	// if we have a password, use it to encrypt the private key and store it
+	// else store the public key only
+	if passwd != "" {
+		inf := kb.writePrivKey(crypto.PrivKeySecp256k1(derivedPriv), name, passwd)
+		info = &inf
+	} else {
+		inf := kb.writePubKey(crypto.PrivKeySecp256k1(derivedPriv).PubKey(), name)
+		info = &inf
+	}
+	return
 }
 
 // List returns the keys from storage in alphabetical order.
@@ -68,7 +125,6 @@ func (kb dbKeybase) List() ([]Info, error) {
 	iter := kb.db.Iterator(nil, nil)
 	defer iter.Close()
 	for ; iter.Valid(); iter.Next() {
-		// key := iter.Key()
 		info, err := readInfo(iter.Value())
 		if err != nil {
 			return nil, err
@@ -191,7 +247,7 @@ func (kb dbKeybase) Update(name, oldpass, newpass string) error {
 		return err
 	}
 
-	kb.writeKey(key, name, newpass)
+	kb.writePrivKey(key, name, newpass)
 	return nil
 }
 
@@ -204,27 +260,15 @@ func (kb dbKeybase) writePubKey(pub crypto.PubKey, name string) Info {
 	return info
 }
 
-func (kb dbKeybase) writeKey(priv crypto.PrivKey, name, passphrase string) Info {
+func (kb dbKeybase) writePrivKey(priv crypto.PrivKey, name, passpwd string) Info {
 	// generate the encrypted privkey
-	privArmor := encryptArmorPrivKey(priv, passphrase)
+	privArmor := encryptArmorPrivKey(priv, passpwd)
 	// make Info
 	info := newInfo(name, priv.PubKey(), privArmor)
 
 	// write them both
 	kb.db.SetSync(infoKey(name), info.bytes())
 	return info
-}
-
-func generate(algo CryptoAlgo, secret []byte) (crypto.PrivKey, error) {
-	switch algo {
-	case AlgoEd25519:
-		return crypto.GenPrivKeyEd25519FromSecret(secret), nil
-	case AlgoSecp256k1:
-		return crypto.GenPrivKeySecp256k1FromSecret(secret), nil
-	default:
-		err := errors.Errorf("Cannot generate keys for algorithm: %s", algo)
-		return nil, err
-	}
 }
 
 func infoKey(name string) []byte {
