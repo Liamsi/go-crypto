@@ -3,6 +3,12 @@
 
 [[projects]]
   branch = "master"
+  name = "github.com/bartekn/go-bip39"
+  packages = ["."]
+  revision = "a05967ea095d81c8fe4833776774cfaff8e5036c"
+
+[[projects]]
+  branch = "master"
   name = "github.com/brejski/hid"
   packages = ["."]
   revision = "06112dcfcc50a7e0e4fd06e17f9791e788fdaafc"
@@ -62,12 +68,6 @@
   name = "github.com/golang/snappy"
   packages = ["."]
   revision = "2e65f85255dbc3072edf28d6b5b8efc472979f5a"
-
-[[projects]]
-  branch = "master"
-  name = "github.com/howeyc/crc16"
-  packages = ["."]
-  revision = "2b2a61e366a66d3efb279e46176e7291001e0354"
 
 [[projects]]
   branch = "master"
@@ -142,7 +142,8 @@
   packages = [
     "common",
     "db",
-    "log"
+    "log",
+    "test"
   ]
   revision = "d970af87248a4e162590300dbb74e102183a417d"
   version = "v0.8.3"
@@ -164,6 +165,8 @@
   packages = [
     "bcrypt",
     "blowfish",
+    "chacha20poly1305",
+    "internal/chacha20",
     "nacl/secretbox",
     "openpgp/armor",
     "openpgp/errors",
@@ -174,9 +177,15 @@
   ]
   revision = "5ba7f63082460102a45837dbd1827e10f9479ac0"
 
+[[projects]]
+  branch = "master"
+  name = "golang.org/x/sys"
+  packages = ["cpu"]
+  revision = "9527bec2660bd847c050fda93a0f0c6dee0800bb"
+
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "365c3bca75ced49eb0ebcdc5c98fd47b534850684fcc94c16d1bc6a671116395"
+  inputs-digest = "a0c6fe722f4bcda8e3721f9a29874301a8204ebe392f009c8a94be978791ae58"
   solver-name = "gps-cdcl"
   solver-version = 1

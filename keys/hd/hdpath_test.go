@@ -14,7 +14,8 @@ func ExampleStringifyPathParams() {
 
 func ExampleSomeBIP32TestVecs() {
 
-	seed := bip39.MnemonicToSeed("barrel original fuel morning among eternal filter ball stove pluck matrix mechanic")
+	seed := bip39.MnemonicToSeed("barrel original fuel morning among eternal " +
+		"filter ball stove pluck matrix mechanic")
 	master, ch := ComputeMastersFromSeed(seed)
 	fmt.Println("keys from fundraiser test-vector (cosmos, bitcoin, ether)")
 	fmt.Println()
@@ -32,12 +33,15 @@ func ExampleSomeBIP32TestVecs() {
 	fmt.Println("keys generated via https://coinomi.com/recovery-phrase-tool.html")
 	fmt.Println()
 
-	seed = bip39.MnemonicToSeed("advice process birth april short trust crater change bacon monkey medal garment gorilla ranch hour rival razor call lunar mention taste vacant woman sister")
+	seed = bip39.MnemonicToSeed(
+		"advice process birth april short trust crater change bacon monkey medal garment " +
+			"gorilla ranch hour rival razor call lunar mention taste vacant woman sister")
 	master, ch = ComputeMastersFromSeed(seed)
 	priv, _ = DerivePrivateKeyForPath(master, ch, "44'/1'/1'/0/4")
 	fmt.Println(hex.EncodeToString(priv[:]))
 
-	seed = bip39.MnemonicToSeed("idea naive region square margin day captain habit gun second farm pact pulse someone armed")
+	seed = bip39.MnemonicToSeed("idea naive region square margin day captain habit " +
+		"gun second farm pact pulse someone armed")
 	master, ch = ComputeMastersFromSeed(seed)
 	priv, _ = DerivePrivateKeyForPath(master, ch, "44'/0'/0'/0/420")
 	fmt.Println(hex.EncodeToString(priv[:]))

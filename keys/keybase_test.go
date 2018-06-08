@@ -28,10 +28,10 @@ func TestKeyManagement(t *testing.T) {
 	//i, err := cstore.Get(n1)
 	//fmt.Println(i)
 	//assert.Error(t, err)
-	//i, _, err = cstore.Create(n1, "english", p1, algo)
+	//i, _, err = cstore.CreateMnemonic(n1, "english", p1, algo)
 	//require.Equal(t, n1, i.Name)
 	//require.Nil(t, err)
-	//_, _, err = cstore.Create(n2, "english", p2, algo)
+	//_, _, err = cstore.CreateMnemonic(n2, "english", p2, algo)
 	//require.Nil(t, err)
 	//
 	//// we can get these keys
@@ -88,10 +88,10 @@ func TestSignVerify(t *testing.T) {
 	//p1, p2, p3 := "1234", "foobar", "foobar"
 	//
 	//// create two users and get their info
-	//i1, _, err := cstore.Create(n1, p1, algo)
+	//i1, _, err := cstore.CreateMnemonic(n1, p1, algo)
 	//require.Nil(t, err)
 	//
-	//i2, _, err := cstore.Create(n2, p2, algo)
+	//i2, _, err := cstore.CreateMnemonic(n2, p2, algo)
 	//require.Nil(t, err)
 	//
 	//// Import a public key
@@ -173,7 +173,7 @@ func TestSignWithLedger(t *testing.T) {
 	p := "hard2hack"
 
 	// create a nano user
-	c, _, err := cstore.Create(n, p, nano.KeyLedgerEd25519)
+	c, _, err := cstore.CreateMnemonic(n, p, nano.KeyLedgerEd25519)
 	require.Nil(t, err, "%+v", err)
 	assert.Equal(t, c.Key, n)
 	_, ok := c.PubKey.Unwrap().(nano.PubKeyLedgerEd25519)
@@ -225,7 +225,7 @@ func assertPassword(t *testing.T, cstore keys.Keybase, name, pass, badpass strin
 //		bip39.MustLoadCodec("english"),
 //	)
 //
-//	info, _, err := cstore.Create("john", "passphrase", "english", keys.AlgoEd25519)
+//	info, _, err := cstore.CreateMnemonic("john", "passphrase", "english", keys.AlgoEd25519)
 //	assert.Nil(t, err)
 //	assert.Equal(t, info.Name, "john")
 //	addr := info.PubKey.Address()
@@ -257,8 +257,8 @@ func assertPassword(t *testing.T, cstore keys.Keybase, name, pass, badpass strin
 //		bip39.MustLoadCodec("english"),
 //	)
 //
-//	// Create a private-public key pair and ensure consistency
-//	info, _, err := cstore.Create("john", "passphrase", keys.AlgoEd25519)
+//	// CreateMnemonic a private-public key pair and ensure consistency
+//	info, _, err := cstore.CreateMnemonic("john", "passphrase", keys.AlgoEd25519)
 //	assert.Nil(t, err)
 //	assert.NotEqual(t, info.PrivKeyArmor, "")
 //	assert.Equal(t, info.Name, "john")
@@ -305,7 +305,7 @@ func assertPassword(t *testing.T, cstore keys.Keybase, name, pass, badpass strin
 //	p1, p2 := "1234", "foobar"
 //
 //	// make sure key works with initial password
-//	_, _, err := cstore.Create(n1, p1, algo)
+//	_, _, err := cstore.CreateMnemonic(n1, p1, algo)
 //	require.Nil(t, err, "%+v", err)
 //	assertPassword(t, cstore, n1, p1, p2)
 //
@@ -355,7 +355,7 @@ func assertPassword(t *testing.T, cstore keys.Keybase, name, pass, badpass strin
 //	p1, p2 := "1234", "foobar"
 //
 //	// make sure key works with initial password
-//	info, seed, err := cstore.Create(n1, p1, algo)
+//	info, seed, err := cstore.CreateMnemonic(n1, p1, algo)
 //	require.Nil(t, err, "%+v", err)
 //	assert.Equal(t, n1, info.Name)
 //	assert.NotEmpty(t, seed)
@@ -367,7 +367,7 @@ func assertPassword(t *testing.T, cstore keys.Keybase, name, pass, badpass strin
 //	require.NotNil(t, err)
 //
 //	// let us re-create it from the seed-phrase
-//	newInfo, err := cstore.Recover(n2, p2, seed)
+//	newInfo, err := cstore.CreateFundraiserKey(n2, p2, seed)
 //	require.Nil(t, err, "%+v", err)
 //	assert.Equal(t, n2, newInfo.Name)
 //	assert.Equal(t, info.Address(), newInfo.Address())
@@ -384,7 +384,7 @@ func assertPassword(t *testing.T, cstore keys.Keybase, name, pass, badpass strin
 //	sec := keys.AlgoSecp256k1
 //
 //	// Add keys and see they return in alphabetical order
-//	bob, _, err := cstore.Create("Bob", "friend", ed)
+//	bob, _, err := cstore.CreateMnemonic("Bob", "friend", ed)
 //	if err != nil {
 //		// this should never happen
 //		fmt.Println(err)
@@ -392,8 +392,8 @@ func assertPassword(t *testing.T, cstore keys.Keybase, name, pass, badpass strin
 //		// return info here just like in List
 //		fmt.Println(bob.Name)
 //	}
-//	cstore.Create("Alice", "secret", sec)
-//	cstore.Create("Carl", "mitm", ed)
+//	cstore.CreateMnemonic("Alice", "secret", sec)
+//	cstore.CreateMnemonic("Carl", "mitm", ed)
 //	info, _ := cstore.List()
 //	for _, i := range info {
 //		fmt.Println(i.Name)
@@ -409,7 +409,7 @@ func assertPassword(t *testing.T, cstore keys.Keybase, name, pass, badpass strin
 //	// and we can validate the signature with publically available info
 //	binfo, _ := cstore.Get("Bob")
 //	if !binfo.PubKey.Equals(bob.PubKey) {
-//		fmt.Println("Get and Create return different keys")
+//		fmt.Println("Get and CreateMnemonic return different keys")
 //	}
 //
 //	if pub.Equals(binfo.PubKey) {

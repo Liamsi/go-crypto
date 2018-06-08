@@ -25,13 +25,13 @@ func New(db dbm.DB) dbKeybase {
 
 var _ Keybase = dbKeybase{}
 
-// Create generates a new key and persists it to storage, encrypted
+// CreateMnemonic generates a new key and persists it to storage, encrypted
 // using the provided password.
 // It returns the generated mnemonic and the key Info.
 // It returns an error if it fails to
 // generate a key for the given algo type, or if another key is
 // already stored under the same name.
-func (kb dbKeybase) Create(name, language, passwd string, algo CryptoAlgo) (info *Info, mnemonic string, err error) {
+func (kb dbKeybase) CreateMnemonic(name, language, passwd string, algo CryptoAlgo) (info *Info, mnemonic string, err error) {
 	if algo != AlgoSecp256k1 {
 		err = fmt.Errorf("currently only Secp256k1 are supported as required by bip39/bip44, requested %s", algo)
 		return
@@ -46,14 +46,14 @@ func (kb dbKeybase) Create(name, language, passwd string, algo CryptoAlgo) (info
 	// a helper function for that
 	mnemonic = strings.Join(mnemonicS, " ")
 	seed := bip39.MnemonicToSeed(mnemonic)
-	info = kb.persistDerivedKey(seed, passwd, name, hd.FullFundraiserPath)
+	info, err = kb.persistDerivedKey(seed, passwd, name, hd.FullFundraiserPath)
 	return
 }
 
-// Recover converts a seedphrase to a private key and persists it,
-// encrypted with the given passphrase.  Functions like Create, but
+// CreateFundraiserKey converts a seedphrase to a private key and persists it,
+// encrypted with the given passphrase.  Functions like CreateMnemonic, but
 // seedphrase is input not output.
-func (kb dbKeybase) Recover(name, mnemonic, passwd string) (info *Info, err error) {
+func (kb dbKeybase) CreateFundraiserKey(name, mnemonic, passwd string) (info *Info, err error) {
 	words := strings.Split(mnemonic, " ")
 	if len(words) != 12 {
 		err = fmt.Errorf("recovering only works with 12 word (fundraiser) mnemonics, got: %v words", len(words))
@@ -63,27 +63,30 @@ func (kb dbKeybase) Recover(name, mnemonic, passwd string) (info *Info, err erro
 	if err != nil {
 		return
 	}
-	info = kb.persistDerivedKey(seed, passwd, name, hd.FullFundraiserPath)
+	info, err = kb.persistDerivedKey(seed, passwd, name, hd.FullFundraiserPath)
 	return
 }
 
 func (kb dbKeybase) Derive(name, mnemonic, passwd string,
 	account uint32, change bool, addressIdx uint32) (info *Info, err error) {
 
-	params := hd.NewFundraiserParams(account, change, addressIdx)
+	params := hd.NewFundraiserParams(account, addressIdx)
 	seed, err := bip39.MnemonicToSeedWithErrChecking(mnemonic)
 	if err != nil {
 		return
 	}
-	info = kb.persistDerivedKey(seed, passwd, name, params.String())
+	info, err = kb.persistDerivedKey(seed, passwd, name, params.String())
 
 	return
 }
 
-func (kb *dbKeybase) persistDerivedKey(seed []byte, passwd, name, fullHdPath string) (info *Info) {
+func (kb *dbKeybase) persistDerivedKey(seed []byte, passwd, name, fullHdPath string) (info *Info, err error) {
 	// create master key and derive first key:
 	masterPriv, ch := hd.ComputeMastersFromSeed(seed)
-	derivedPriv := hd.DerivePrivateKeyForPath(masterPriv, ch, fullHdPath)
+	derivedPriv, err := hd.DerivePrivateKeyForPath(masterPriv, ch, fullHdPath)
+	if err != nil {
+		return
+	}
 
 	// if we have a password, use it to encrypt the private key and store it
 	// else store the public key only
