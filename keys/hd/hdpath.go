@@ -1,4 +1,5 @@
-// Package hd provides bip44 functionality.
+// Package hd provides bip44 / bip 32 functionality.
+// - bip 32 paths work too
 // TODO(ismail): proper documentation
 package hd
 
@@ -22,6 +23,7 @@ const (
 	FullFundraiserPath = BIP44Prefix + "0'/0/0"
 )
 
+// TODO(ismail): add a constructor that takes a string for bip32
 type BIP44Params struct {
 	purpose    uint32
 	coinType   uint32
@@ -73,41 +75,43 @@ func ComputeMastersFromSeed(seed []byte) (secret [32]byte, chainCode [32]byte) {
 	return
 }
 
-// DerivePrivateKeyForPath derives the private key by following the path from privKeyBytes,
+// DerivePrivateKeyForPath derives the private key by following the BIP 32/44 path from privKeyBytes,
 // using the given chainCode.
-func DerivePrivateKeyForPath(privKeyBytes [32]byte, chainCode [32]byte, path string) [32]byte {
+func DerivePrivateKeyForPath(privKeyBytes [32]byte, chainCode [32]byte, path string) (derivedKey [32]byte, err error) {
 	data := privKeyBytes
 	parts := strings.Split(path, "/")
 	for _, part := range parts {
-		prime := part[len(part)-1:] == "'"
-		// prime == private derivation. Otherwise public.
-		if prime {
+		// do we have an apostrophe?
+		harden := part[len(part)-1:] == "'"
+		// harden == private derivation, else public derivation:
+		if harden {
 			part = part[:len(part)-1]
 		}
-		i, err := strconv.Atoi(part)
+		var idx int
+		idx, err = strconv.Atoi(part)
 		if err != nil {
-			panic(err)
+			err = fmt.Errorf("invalid BIP 32 path: %s", err)
+			return
 		}
-		if i < 0 {
-			panic(errors.New("index too large"))
+		if idx < 0 {
+			err = errors.New("invalid BIP 32 path: index negative ot too large")
+			return
 		}
-		data, chainCode = DerivePrivateKey(data, chainCode, uint32(i), prime)
-		//printKeyInfo(data, nil, chain)
+		data, chainCode = derivePrivateKey(data, chainCode, uint32(idx), harden)
 	}
-	var derivedKey [32]byte
 	n := copy(derivedKey[:], data[:])
 	if n != 32 || len(data) != 32 {
-		panic(fmt.Sprintf("expected a key of length 32, got: %v", len(data)))
+		err = fmt.Errorf("expected a (secp256k1) key of length 32, got length: %v", len(data))
 	}
-	return derivedKey
+	return
 }
 
-// DerivePrivateKey derives the private key with index and chainCode.
-// If prime is true, the derivation is 'hardened'.
+// derivePrivateKey derives the private key with index and chainCode.
+// If harden is true, the derivation is 'hardened'.
 // It returns the new private key and new chain code.
-func DerivePrivateKey(privKeyBytes [32]byte, chainCode [32]byte, index uint32, prime bool) ([32]byte, [32]byte) {
+func derivePrivateKey(privKeyBytes [32]byte, chainCode [32]byte, index uint32, harden bool) ([32]byte, [32]byte) {
 	var data []byte
-	if prime {
+	if harden {
 		index = index | 0x80000000
 		data = append([]byte{byte(0)}, privKeyBytes[:]...)
 	} else {

@@ -1,8 +1,8 @@
 package hd
 
 import (
-	"fmt"
 	"encoding/hex"
+	"fmt"
 	"github.com/tendermint/go-crypto/keys/bip39"
 )
 
@@ -19,13 +19,13 @@ func ExampleSomeBIP32TestVecs() {
 	fmt.Println("keys from fundraiser test-vector (cosmos, bitcoin, ether)")
 	fmt.Println()
 	// cosmos
-	priv := DerivePrivateKeyForPath(master, ch, FullFundraiserPath)
+	priv, _ := DerivePrivateKeyForPath(master, ch, FullFundraiserPath)
 	fmt.Println(hex.EncodeToString(priv[:]))
 	// bitcoin
-	priv = DerivePrivateKeyForPath(master, ch, "44'/0'/0'/0/0")
+	priv, _ = DerivePrivateKeyForPath(master, ch, "44'/0'/0'/0/0")
 	fmt.Println(hex.EncodeToString(priv[:]))
 	// ether
-	priv = DerivePrivateKeyForPath(master, ch, "44'/60'/0'/0/0")
+	priv, _ = DerivePrivateKeyForPath(master, ch, "44'/60'/0'/0/0")
 	fmt.Println(hex.EncodeToString(priv[:]))
 
 	fmt.Println()
@@ -34,12 +34,22 @@ func ExampleSomeBIP32TestVecs() {
 
 	seed = bip39.MnemonicToSeed("advice process birth april short trust crater change bacon monkey medal garment gorilla ranch hour rival razor call lunar mention taste vacant woman sister")
 	master, ch = ComputeMastersFromSeed(seed)
-	priv = DerivePrivateKeyForPath(master, ch, "44'/1'/1'/0/4")
+	priv, _ = DerivePrivateKeyForPath(master, ch, "44'/1'/1'/0/4")
 	fmt.Println(hex.EncodeToString(priv[:]))
 
 	seed = bip39.MnemonicToSeed("idea naive region square margin day captain habit gun second farm pact pulse someone armed")
 	master, ch = ComputeMastersFromSeed(seed)
-	priv = DerivePrivateKeyForPath(master, ch, "44'/0'/0'/0/420")
+	priv, _ = DerivePrivateKeyForPath(master, ch, "44'/0'/0'/0/420")
+	fmt.Println(hex.EncodeToString(priv[:]))
+
+	fmt.Println()
+	fmt.Println("BIP 32 example")
+	fmt.Println()
+
+	// bip32 path: m/0/7
+	seed = bip39.MnemonicToSeed("monitor flock loyal sick object grunt duty ride develop assault harsh history")
+	master, ch = ComputeMastersFromSeed(seed)
+	priv, _ = DerivePrivateKeyForPath(master, ch, "0/7")
 	fmt.Println(hex.EncodeToString(priv[:]))
 
 	// Output: keys from fundraiser test-vector (cosmos, bitcoin, ether)
@@ -52,4 +62,8 @@ func ExampleSomeBIP32TestVecs() {
 	//
 	// a61f10c5fecf40c084c94fa54273b6f5d7989386be4a37669e6d6f7b0169c163
 	// 32c4599843de3ef161a629a461d12c60b009b676c35050be5f7ded3a3b23501f
+	//
+	// BIP 32 example
+	//
+	// c4c11d8c03625515905d7e89d25dfc66126fbc629ecca6db489a1a72fc4bda78
 }

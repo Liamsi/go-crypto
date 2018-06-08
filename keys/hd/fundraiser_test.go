@@ -57,8 +57,9 @@ func TestFundraiserCompatibility(t *testing.T) {
 		//fmt.Println("ROUND:", i, "MNEMONIC:", d.Mnemonic)
 
 		master, ch := ComputeMastersFromSeed(seed)
-		priv := DerivePrivateKeyForPath(master, ch, "44'/118'/0'/0/0")
+		priv, err := DerivePrivateKeyForPath(master, ch, "44'/118'/0'/0/0")
 		pub := crypto.PrivKeySecp256k1(priv).PubKey()
+		assert.NoError(t, err)
 
 		//fmt.Printf("\tNODEJS GOLANG\n")
 		//fmt.Printf("SEED \t%X %X\n", seedB, seed)
