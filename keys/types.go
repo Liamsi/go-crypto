@@ -2,6 +2,7 @@ package keys
 
 import (
 	crypto "github.com/tendermint/go-crypto"
+	"github.com/tendermint/go-crypto/keys/hd"
 )
 
 // Keybase allows simple CRUD on a keystore, as an aid to signing
@@ -9,10 +10,11 @@ type Keybase interface {
 	// Sign some bytes
 	Sign(name, passwd string, msg []byte) (crypto.Signature, crypto.PubKey, error)
 	// CreateMnemonic a new keypair
-	CreateMnemonic(name, language, passwd string, algo CryptoAlgo) (info *Info, seed string, err error)
+	CreateMnemonic(name string, language Language, passwd string, algo CryptoAlgo) (info *Info, seed string, err error)
 	// CreateFundraiserKey takes a seedphrase and loads in the key
 	CreateFundraiserKey(name, mnemonic, seedphrase string) (info *Info, err error)
-	Derive(name, mnemonic, passwd string, account uint32, change bool, addressIdx uint32) (*Info, error)
+	// Derive derives a key from the passed mnemonic using a BIP44 path.
+	Derive(name, mnemonic, passwd string, params hd.BIP44Params) (*Info, error)
 	List() ([]Info, error)
 	Get(name string) (*Info, error)
 	Update(name, oldpass, newpass string) error

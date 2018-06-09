@@ -13,6 +13,19 @@ import (
 
 var _ Keybase = dbKeybase{}
 
+type Language int
+
+const (
+	English Language = iota
+	Japanese
+	Korean
+	Spanish
+	ChineseSimplified
+	ChineseTraditional
+	French
+	Italian
+)
+
 // dbKeybase combines encryption and storage implementation to provide
 // a full-featured key manager
 type dbKeybase struct {
@@ -31,7 +44,10 @@ func New(db dbm.DB) dbKeybase {
 // It returns an error if it fails to
 // generate a key for the given algo type, or if another key is
 // already stored under the same name.
-func (kb dbKeybase) CreateMnemonic(name, language, passwd string, algo CryptoAlgo) (info *Info, mnemonic string, err error) {
+func (kb dbKeybase) CreateMnemonic(name string, language Language, passwd string, algo CryptoAlgo) (info *Info, mnemonic string, err error) {
+	if language != English {
+		return nil, "", fmt.Errorf("unsupported language: currently only english is supported")
+	}
 	if algo != AlgoSecp256k1 {
 		err = fmt.Errorf("currently only Secp256k1 are supported as required by bip39/bip44, requested %s", algo)
 		return
@@ -67,10 +83,7 @@ func (kb dbKeybase) CreateFundraiserKey(name, mnemonic, passwd string) (info *In
 	return
 }
 
-func (kb dbKeybase) Derive(name, mnemonic, passwd string,
-	account uint32, change bool, addressIdx uint32) (info *Info, err error) {
-
-	params := hd.NewFundraiserParams(account, addressIdx)
+func (kb dbKeybase) Derive(name, mnemonic, passwd string, params hd.BIP44Params) (info *Info, err error) {
 	seed, err := bip39.MnemonicToSeedWithErrChecking(mnemonic)
 	if err != nil {
 		return

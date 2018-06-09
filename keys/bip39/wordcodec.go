@@ -39,7 +39,6 @@ func NewMnemonic(len ValidSentenceLen) (words []string, err error) {
 	return
 }
 
-// TODO(ismail): do we want to expose this anyways?
 func MnemonicToSeed(mne string) (seed []byte) {
 	// we do not checksum here...
 	seed = bip39.NewSeed(mne, "")

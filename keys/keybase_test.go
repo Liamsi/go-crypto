@@ -8,6 +8,7 @@ import (
 	"github.com/stretchr/testify/require"
 	"github.com/tendermint/go-crypto"
 	"github.com/tendermint/go-crypto/keys"
+	"github.com/tendermint/go-crypto/keys/hd"
 
 	dbm "github.com/tendermint/tmlibs/db"
 )
@@ -28,18 +29,17 @@ func TestKeyManagement(t *testing.T) {
 	require.Nil(t, err)
 	assert.Empty(t, l)
 
-	_, _, err = cstore.CreateMnemonic(n1, "english", p1, keys.AlgoEd25519)
+	_, _, err = cstore.CreateMnemonic(n1, keys.English, p1, keys.AlgoEd25519)
 	assert.Errorf(t, err, "ed25519 keys are currently not supported by keybase")
 
 	// create some keys
 	i, err := cstore.Get(n1)
-	fmt.Println(i)
 	assert.Error(t, err)
-	i, _, err = cstore.CreateMnemonic(n1, "english", p1, algo)
+	i, _, err = cstore.CreateMnemonic(n1, keys.English, p1, algo)
 
 	require.NoError(t, err)
 	require.Equal(t, n1, i.Name)
-	_, _, err = cstore.CreateMnemonic(n2, "english", p2, algo)
+	_, _, err = cstore.CreateMnemonic(n2, keys.English, p2, algo)
 	require.NoError(t, err)
 
 	// we can get these keys
@@ -93,10 +93,10 @@ func TestSignVerify(t *testing.T) {
 	p1, p2, p3 := "1234", "foobar", "foobar"
 
 	// create two users and get their info
-	i1, _, err := cstore.CreateMnemonic(n1, "english", p1, algo)
+	i1, _, err := cstore.CreateMnemonic(n1, keys.English, p1, algo)
 	require.Nil(t, err)
 
-	i2, _, err := cstore.CreateMnemonic(n2, "english", p2, algo)
+	i2, _, err := cstore.CreateMnemonic(n2, keys.English, p2, algo)
 	require.Nil(t, err)
 
 	// Import a public key
@@ -174,7 +174,7 @@ func TestExportImport(t *testing.T) {
 		db,
 	)
 
-	info, _, err := cstore.CreateMnemonic("john", "passphrase", "english", keys.AlgoSecp256k1)
+	info, _, err := cstore.CreateMnemonic("john", keys.English,"passphrase",  keys.AlgoSecp256k1)
 	assert.Nil(t, err)
 	assert.Equal(t, info.Name, "john")
 	addr := info.PubKey.Address()
@@ -207,7 +207,7 @@ func TestExportImportPubKey(t *testing.T) {
 
 	// CreateMnemonic a private-public key pair and ensure consistency
 	notPasswd := "n9y25ah7"
-	info, _, err := cstore.CreateMnemonic("john", "english", notPasswd, keys.AlgoSecp256k1)
+	info, _, err := cstore.CreateMnemonic("john", keys.English, notPasswd, keys.AlgoSecp256k1)
 	assert.Nil(t, err)
 	assert.NotEqual(t, info.PrivKeyArmor, "")
 	assert.Equal(t, info.Name, "john")
@@ -253,7 +253,7 @@ func TestAdvancedKeyManagement(t *testing.T) {
 	p1, p2 := "1234", "foobar"
 
 	// make sure key works with initial password
-	_, _, err := cstore.CreateMnemonic(n1, "english", p1, algo)
+	_, _, err := cstore.CreateMnemonic(n1, keys.English, p1, algo)
 	require.Nil(t, err, "%+v", err)
 	assertPassword(t, cstore, n1, p1, p2)
 
@@ -302,7 +302,7 @@ func TestSeedPhrase(t *testing.T) {
 	p1, p2 := "1234", "foobar"
 
 	// make sure key works with initial password
-	info, mnemonic, err := cstore.CreateMnemonic(n1, "english", p1, algo)
+	info, mnemonic, err := cstore.CreateMnemonic(n1, keys.English, p1, algo)
 	require.Nil(t, err, "%+v", err)
 	assert.Equal(t, n1, info.Name)
 	assert.NotEmpty(t, mnemonic)
@@ -314,7 +314,8 @@ func TestSeedPhrase(t *testing.T) {
 	require.NotNil(t, err)
 
 	// let us re-create it from the mnemonic-phrase
-	newInfo, err := cstore.Derive(n2,mnemonic, p2, 0, false, 0 )
+	params := *hd.NewFundraiserParams(0 ,0 )
+	newInfo, err := cstore.Derive(n2,mnemonic, p2, params)
 	require.NoError(t, err)
 	assert.Equal(t, n2, newInfo.Name)
 	assert.Equal(t, info.Address(), newInfo.Address())
@@ -330,7 +331,7 @@ func ExampleNew() {
 	sec := keys.AlgoSecp256k1
 
 	// Add keys and see they return in alphabetical order
-	bob, _, err := cstore.CreateMnemonic("Bob", "english", "friend", sec)
+	bob, _, err := cstore.CreateMnemonic("Bob", keys.English, "friend", sec)
 	if err != nil {
 		// this should never happen
 		fmt.Println(err)
@@ -338,8 +339,8 @@ func ExampleNew() {
 		// return info here just like in List
 		fmt.Println(bob.Name)
 	}
-	cstore.CreateMnemonic("Alice", "english", "secret", sec)
-	cstore.CreateMnemonic("Carl", "english", "mitm", sec)
+	cstore.CreateMnemonic("Alice", keys.English, "secret", sec)
+	cstore.CreateMnemonic("Carl", keys.English, "mitm", sec)
 	info, _ := cstore.List()
 	for _, i := range info {
 		fmt.Println(i.Name)
