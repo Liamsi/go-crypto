@@ -11,6 +11,8 @@ import (
 	dbm "github.com/tendermint/tmlibs/db"
 )
 
+var _ Keybase = dbKeybase{}
+
 // dbKeybase combines encryption and storage implementation to provide
 // a full-featured key manager
 type dbKeybase struct {
@@ -22,8 +24,6 @@ func New(db dbm.DB) dbKeybase {
 		db: db,
 	}
 }
-
-var _ Keybase = dbKeybase{}
 
 // CreateMnemonic generates a new key and persists it to storage, encrypted
 // using the provided password.
