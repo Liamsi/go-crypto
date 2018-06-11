@@ -13,16 +13,28 @@ import (
 
 var _ Keybase = dbKeybase{}
 
+// Language is a language to create the BIP 39 mnemonic in.
+// Currently, only english is supported though.
+// Find a list of all supported languages in the BIP 39 spec (word lists).
 type Language int
 
 const (
+	// English is the default language to create a mnemonic.
+	// It is the only supported language by this package.
 	English Language = iota
+	// Japanese is currently not supported.
 	Japanese
+	// Korean is currently not supported.
 	Korean
+	// Spanish is currently not supported.
 	Spanish
+	// ChineseSimplified is currently not supported.
 	ChineseSimplified
+	// ChineseTraditional is currently not supported.
 	ChineseTraditional
+	// French is currently not supported.
 	French
+	// Italian is currently not supported.
 	Italian
 )
 
@@ -32,7 +44,8 @@ type dbKeybase struct {
 	db dbm.DB
 }
 
-func New(db dbm.DB) dbKeybase {
+// New creates a new keybase instance using the passed DB for reading and writing keys.
+func New(db dbm.DB) Keybase {
 	return dbKeybase{
 		db: db,
 	}
@@ -44,11 +57,11 @@ func New(db dbm.DB) dbKeybase {
 // It returns an error if it fails to
 // generate a key for the given algo type, or if another key is
 // already stored under the same name.
-func (kb dbKeybase) CreateMnemonic(name string, language Language, passwd string, algo CryptoAlgo) (info *Info, mnemonic string, err error) {
+func (kb dbKeybase) CreateMnemonic(name string, language Language, passwd string, algo SigningAlgo) (info *Info, mnemonic string, err error) {
 	if language != English {
 		return nil, "", fmt.Errorf("unsupported language: currently only english is supported")
 	}
-	if algo != AlgoSecp256k1 {
+	if algo != Secp256k1 {
 		err = fmt.Errorf("currently only Secp256k1 are supported as required by bip39/bip44, requested %s", algo)
 		return
 	}
@@ -66,7 +79,7 @@ func (kb dbKeybase) CreateMnemonic(name string, language Language, passwd string
 	return
 }
 
-// CreateFundraiserKey converts a seedphrase to a private key and persists it,
+// CreateFundraiserKey converts a mnemonic to a private key and persists it,
 // encrypted with the given passphrase.  Functions like CreateMnemonic, but
 // seedphrase is input not output.
 func (kb dbKeybase) CreateFundraiserKey(name, mnemonic, passwd string) (info *Info, err error) {

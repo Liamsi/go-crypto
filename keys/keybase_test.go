@@ -20,7 +20,7 @@ func TestKeyManagement(t *testing.T) {
 		dbm.NewMemDB(),
 	)
 
-	algo := keys.AlgoSecp256k1
+	algo := keys.Secp256k1
 	n1, n2, n3 := "personal", "business", "other"
 	p1, p2 := "1234", "really-secure!@#$"
 
@@ -29,13 +29,13 @@ func TestKeyManagement(t *testing.T) {
 	require.Nil(t, err)
 	assert.Empty(t, l)
 
-	_, _, err = cstore.CreateMnemonic(n1, keys.English, p1, keys.AlgoEd25519)
+	_, _, err = cstore.CreateMnemonic(n1, keys.English, p1, keys.Ed25519)
 	assert.Errorf(t, err, "ed25519 keys are currently not supported by keybase")
 
 	// create some keys
-	i, err := cstore.Get(n1)
+	_, err = cstore.Get(n1)
 	assert.Error(t, err)
-	i, _, err = cstore.CreateMnemonic(n1, keys.English, p1, algo)
+	i, _, err := cstore.CreateMnemonic(n1, keys.English, p1, algo)
 
 	require.NoError(t, err)
 	require.Equal(t, n1, i.Name)
@@ -87,7 +87,7 @@ func TestSignVerify(t *testing.T) {
 	cstore := keys.New(
 		dbm.NewMemDB(),
 	)
-	algo := keys.AlgoSecp256k1
+	algo := keys.Secp256k1
 
 	n1, n2, n3 := "some dude", "a dudette", "dude-ish"
 	p1, p2, p3 := "1234", "foobar", "foobar"
@@ -174,7 +174,7 @@ func TestExportImport(t *testing.T) {
 		db,
 	)
 
-	info, _, err := cstore.CreateMnemonic("john", keys.English,"passphrase",  keys.AlgoSecp256k1)
+	info, _, err := cstore.CreateMnemonic("john", keys.English,"passphrase",  keys.Secp256k1)
 	assert.Nil(t, err)
 	assert.Equal(t, info.Name, "john")
 	addr := info.PubKey.Address()
@@ -207,7 +207,7 @@ func TestExportImportPubKey(t *testing.T) {
 
 	// CreateMnemonic a private-public key pair and ensure consistency
 	notPasswd := "n9y25ah7"
-	info, _, err := cstore.CreateMnemonic("john", keys.English, notPasswd, keys.AlgoSecp256k1)
+	info, _, err := cstore.CreateMnemonic("john", keys.English, notPasswd, keys.Secp256k1)
 	assert.Nil(t, err)
 	assert.NotEqual(t, info.PrivKeyArmor, "")
 	assert.Equal(t, info.Name, "john")
@@ -248,7 +248,7 @@ func TestAdvancedKeyManagement(t *testing.T) {
 		dbm.NewMemDB(),
 	)
 
-	algo := keys.AlgoSecp256k1
+	algo := keys.Secp256k1
 	n1, n2 := "old-name", "new name"
 	p1, p2 := "1234", "foobar"
 
@@ -297,7 +297,7 @@ func TestSeedPhrase(t *testing.T) {
 		dbm.NewMemDB(),
 	)
 
-	algo := keys.AlgoSecp256k1
+	algo := keys.Secp256k1
 	n1, n2 := "lost-key", "found-again"
 	p1, p2 := "1234", "foobar"
 
@@ -328,7 +328,7 @@ func ExampleNew() {
 		dbm.NewMemDB(),
 	)
 
-	sec := keys.AlgoSecp256k1
+	sec := keys.Secp256k1
 
 	// Add keys and see they return in alphabetical order
 	bob, _, err := cstore.CreateMnemonic("Bob", keys.English, "friend", sec)

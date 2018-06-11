@@ -7,12 +7,13 @@ import (
 
 // Keybase allows simple CRUD on a keystore, as an aid to signing
 type Keybase interface {
-	// Sign some bytes
+	// Sign some bytes.
 	Sign(name, passwd string, msg []byte) (crypto.Signature, crypto.PubKey, error)
-	// CreateMnemonic a new keypair
-	CreateMnemonic(name string, language Language, passwd string, algo CryptoAlgo) (info *Info, seed string, err error)
-	// CreateFundraiserKey takes a seedphrase and loads in the key
-	CreateFundraiserKey(name, mnemonic, seedphrase string) (info *Info, err error)
+	// CreateMnemonic creates a new mnemonic, and derives a hierarchical deterministic
+	// key from that.
+	CreateMnemonic(name string, language Language, passwd string, algo SigningAlgo) (info *Info, seed string, err error)
+	// CreateFundraiserKey takes a mnemonic and derives, a password
+	CreateFundraiserKey(name, mnemonic, passwd string) (info *Info, err error)
 	// Derive derives a key from the passed mnemonic using a BIP44 path.
 	Derive(name, mnemonic, passwd string, params hd.BIP44Params) (*Info, error)
 	List() ([]Info, error)
