@@ -44,7 +44,7 @@ func TestKeyManagement(t *testing.T) {
 
 	// we can get these keys
 	i2, err := cstore.Get(n2)
-	assert.Nil(t, err)
+	assert.NoError(t, err)
 	_, err = cstore.Get(n3)
 	assert.NotNil(t, err)
 
@@ -53,9 +53,9 @@ func TestKeyManagement(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, 2, len(keyS))
 	// note these are in alphabetical order
-	assert.Equal(t, n2, keyS[0].Name)
-	assert.Equal(t, n1, keyS[1].Name)
-	assert.Equal(t, i2.PubKey, keyS[0].PubKey)
+	assert.Equal(t, n2, keyS[0].GetName())
+	assert.Equal(t, n1, keyS[1].GetName())
+	assert.Equal(t, i2.GetPubKey(), keyS[0].GetPubKey())
 
 	// deleting a key removes it
 	err = cstore.Delete("bad name", "foo")
@@ -68,17 +68,37 @@ func TestKeyManagement(t *testing.T) {
 	_, err = cstore.Get(n1)
 	assert.Error(t, err)
 
-	//make sure that it only signs with the right password
-	//tx := mock.NewSig([]byte("mytransactiondata"))
-	//err = cstore.Sign(n2, p1, tx)
-	//assert.NotNil(t, err)
-	//err = cstore.Sign(n2, p2, tx)
-	//assert.Nil(t, err, "%+v", err)
-	//sigs, err := tx.Signers()
-	//assert.Nil(t, err, "%+v", err)
-	//if assert.Equal(t, 1, len(sigs)) {
-	//	assert.Equal(t, i2.PubKey, sigs[0])
-	//}
+	// create an offline key
+	o1 := "offline"
+	priv1 := crypto.GenPrivKeyEd25519()
+	pub1, err := priv1.PubKey()
+	require.Nil(t, err)
+	i, err = cstore.CreateOffline(o1, pub1)
+	require.Nil(t, err)
+	require.Equal(t, pub1, i.GetPubKey())
+	require.Equal(t, o1, i.GetName())
+	keyS, err = cstore.List()
+	require.Equal(t, 2, len(keyS))
+
+	// delete the offline key
+	err = cstore.Delete(o1, "no")
+	require.NotNil(t, err)
+	err = cstore.Delete(o1, "yes")
+	require.Nil(t, err)
+	keyS, err = cstore.List()
+	require.Equal(t, 1, len(keyS))
+
+	// make sure that it only signs with the right password
+	// tx := mock.NewSig([]byte("mytransactiondata"))
+	// err = cstore.Sign(n2, p1, tx)
+	// assert.NotNil(t, err)
+	// err = cstore.Sign(n2, p2, tx)
+	// assert.Nil(t, err, "%+v", err)
+	// sigs, err := tx.Signers()
+	// assert.Nil(t, err, "%+v", err)
+	// if assert.Equal(t, 1, len(sigs)) {
+	// 	assert.Equal(t, i2.PubKey, sigs[0])
+	// }
 }
 
 // TestSignVerify does some detailed checks on how we sign and validate
@@ -115,19 +135,19 @@ func TestSignVerify(t *testing.T) {
 	// try signing both data with both keys...
 	s11, pub1, err := cstore.Sign(n1, p1, d1)
 	require.Nil(t, err)
-	require.Equal(t, i1.PubKey, pub1)
+	require.Equal(t, i1.GetPubKey(), pub1)
 
 	s12, pub1, err := cstore.Sign(n1, p1, d2)
 	require.Nil(t, err)
-	require.Equal(t, i1.PubKey, pub1)
+	require.Equal(t, i1.GetPubKey(), pub1)
 
 	s21, pub2, err := cstore.Sign(n2, p2, d1)
 	require.Nil(t, err)
-	require.Equal(t, i2.PubKey, pub2)
+	require.Equal(t, i2.GetPubKey(), pub2)
 
 	s22, pub2, err := cstore.Sign(n2, p2, d2)
 	require.Nil(t, err)
-	require.Equal(t, i2.PubKey, pub2)
+	require.Equal(t, i2.GetPubKey(), pub2)
 
 	// let's try to validate and make sure it only works when everything is proper
 	cases := []struct {
@@ -137,15 +157,15 @@ func TestSignVerify(t *testing.T) {
 		valid bool
 	}{
 		// proper matches
-		{i1.PubKey, d1, s11, true},
+		{i1.GetPubKey(), d1, s11, true},
 		// change data, pubkey, or signature leads to fail
-		{i1.PubKey, d2, s11, false},
-		{i2.PubKey, d1, s11, false},
-		{i1.PubKey, d1, s21, false},
+		{i1.GetPubKey(), d2, s11, false},
+		{i2.GetPubKey(), d1, s11, false},
+		{i1.GetPubKey(), d1, s21, false},
 		// make sure other successes
-		{i1.PubKey, d2, s12, true},
-		{i2.PubKey, d1, s21, true},
-		{i2.PubKey, d2, s22, true},
+		{i1.GetPubKey(), d2, s12, true},
+		{i2.GetPubKey(), d1, s21, true},
+		{i2.GetPubKey(), d2, s22, true},
 	}
 
 	for i, tc := range cases {
@@ -175,26 +195,26 @@ func TestExportImport(t *testing.T) {
 	)
 
 	info, _, err := cstore.CreateMnemonic("john", keys.English,"passphrase",  keys.Secp256k1)
-	assert.Nil(t, err)
-	assert.Equal(t, info.Name, "john")
-	addr := info.PubKey.Address()
+	assert.NoError(t, err)
+	assert.Equal(t, info.GetName(), "john")
+	addr := info.GetPubKey().Address()
 
 	john, err := cstore.Get("john")
-	assert.Nil(t, err)
-	assert.Equal(t, john.Name, "john")
-	assert.Equal(t, john.PubKey.Address(), addr)
+	assert.NoError(t, err)
+	assert.Equal(t, info.GetName(), "john")
+	addr := info.GetPubKey().Address()
 
 	armor, err := cstore.Export("john")
-	assert.Nil(t, err)
+	assert.NoError(t, err)
 
 	err = cstore.Import("john2", armor)
-	assert.Nil(t, err)
+	assert.NoError(t, err)
 
 	john2, err := cstore.Get("john2")
-	assert.Nil(t, err)
+	assert.NoError(t, err)
 
-	assert.Equal(t, john.PubKey.Address(), addr)
-	assert.Equal(t, john.Name, "john")
+	assert.Equal(t, john.GetPubKey().Address(), addr)
+	assert.Equal(t, john.GetName(), "john")
 	assert.Equal(t, john, john2)
 }
 //
@@ -213,27 +233,26 @@ func TestExportImportPubKey(t *testing.T) {
 	assert.Equal(t, info.Name, "john")
 	addr := info.PubKey.Address()
 	john, err := cstore.Get("john")
-	assert.Nil(t, err)
-	assert.Equal(t, john.Name, "john")
-	assert.Equal(t, john.PubKey.Address(), addr)
+	assert.NoError(t, err)
+	assert.Equal(t, john.GetName(), "john")
+	assert.Equal(t, john.GetPubKey().Address(), addr)
 
 	// Export the public key only
 	armor, err := cstore.ExportPubKey("john")
-	assert.Nil(t, err)
+	assert.NoError(t, err)
 	// Import it under a different name
 	err = cstore.ImportPubKey("john-pubkey-only", armor)
-	assert.Nil(t, err)
+	assert.NoError(t, err)
 	// Ensure consistency
 	john2, err := cstore.Get("john-pubkey-only")
-	assert.Nil(t, err)
-	assert.Equal(t, john2.PrivKeyArmor, "")
+	assert.NoError(t, err)
 	// Compare the public keys
-	assert.True(t, john.PubKey.Equals(john2.PubKey))
+	assert.True(t, john.GetPubKey().Equals(john2.GetPubKey()))
 	// Ensure the original key hasn't changed
 	john, err = cstore.Get("john")
-	assert.Nil(t, err)
-	assert.Equal(t, john.PubKey.Address(), addr)
-	assert.Equal(t, john.Name, "john")
+	assert.NoError(t, err)
+	assert.Equal(t, john.GetPubKey().Address(), addr)
+	assert.Equal(t, john.GetName(), "john")
 
 	// Ensure keys cannot be overwritten
 	err = cstore.ImportPubKey("john-pubkey-only", armor)
@@ -264,7 +283,7 @@ func TestAdvancedKeyManagement(t *testing.T) {
 
 	// then it changes the password when correct
 	err = cstore.Update(n1, p1, p2)
-	assert.Nil(t, err)
+	assert.NoError(t, err)
 	// p2 is now the proper one!
 	assertPassword(t, cstore, n1, p2, p1)
 
@@ -282,7 +301,7 @@ func TestAdvancedKeyManagement(t *testing.T) {
 
 	// import succeeds
 	err = cstore.Import(n2, exported)
-	assert.Nil(t, err)
+	assert.NoError(t, err)
 
 	// second import fails
 	err = cstore.Import(n2, exported)
@@ -337,13 +356,13 @@ func ExampleNew() {
 		fmt.Println(err)
 	} else {
 		// return info here just like in List
-		fmt.Println(bob.Name)
+		fmt.Println(bob.GetName())
 	}
 	cstore.CreateMnemonic("Alice", keys.English, "secret", sec)
 	cstore.CreateMnemonic("Carl", keys.English, "mitm", sec)
 	info, _ := cstore.List()
 	for _, i := range info {
-		fmt.Println(i.Name)
+		fmt.Println(i.GetName())
 	}
 
 	// We need to use passphrase to generate a signature
@@ -355,11 +374,11 @@ func ExampleNew() {
 
 	// and we can validate the signature with publicly available info
 	binfo, _ := cstore.Get("Bob")
-	if !binfo.PubKey.Equals(bob.PubKey) {
-		fmt.Println("Get and CreateMnemonic return different keys")
+	if !binfo.GetPubKey().Equals(bob.GetPubKey()) {
+		fmt.Println("Get and Create return different keys")
 	}
 
-	if pub.Equals(binfo.PubKey) {
+	if pub.Equals(binfo.GetPubKey()) {
 		fmt.Println("signed by Bob")
 	}
 	if !pub.VerifyBytes(tx, sig) {

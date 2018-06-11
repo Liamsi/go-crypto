@@ -1,7 +1,9 @@
 package keys
 
 import (
+	"bufio"
 	"fmt"
+	"os"
 	"strings"
 
 	"github.com/pkg/errors"
@@ -105,6 +107,29 @@ func (kb dbKeybase) Derive(name, mnemonic, passwd string, params hd.BIP44Params)
 
 	return
 }
+// CreateLedger creates a new locally-stored reference to a Ledger keypair
+// It returns the created key info and an error if the Ledger could not be queried
+func (kb dbKeybase) CreateLedger(name string, path crypto.DerivationPath, algo SignAlgo) (Info, error) {
+	if algo != AlgoSecp256k1 {
+		return nil, fmt.Errorf("Only secp256k1 is supported for Ledger devices")
+	}
+	priv, err := crypto.NewPrivKeyLedgerSecp256k1(path)
+	if err != nil {
+		return nil, err
+	}
+	pub, err := priv.PubKey()
+	if err != nil {
+		return nil, err
+	}
+	return kb.writeLedgerKey(pub, path, name), nil
+}
+
+// CreateOffline creates a new reference to an offline keypair
+// It returns the created key info
+func (kb dbKeybase) CreateOffline(name string, pub crypto.PubKey) (Info, error) {
+	return kb.writeOfflineKey(pub, name), nil
+}
+
 
 func (kb *dbKeybase) persistDerivedKey(seed []byte, passwd, name, fullHdPath string) (info *Info, err error) {
 	// create master key and derive first key:
@@ -142,7 +167,7 @@ func (kb dbKeybase) List() ([]Info, error) {
 }
 
 // Get returns the public information about one key.
-func (kb dbKeybase) Get(name string) (*Info, error) {
+func (kb dbKeybase) Get(name string) (Info, error) {
 	bs := kb.db.Get(infoKey(name))
 	return readInfo(bs)
 }
@@ -154,17 +179,46 @@ func (kb dbKeybase) Sign(name, passphrase string, msg []byte) (sig crypto.Signat
 	if err != nil {
 		return
 	}
-	if info.PrivKeyArmor == "" {
-		err = fmt.Errorf("private key not available")
-		return
+	var priv crypto.PrivKey
+	switch info.(type) {
+	case localInfo:
+		linfo := info.(localInfo)
+		if linfo.PrivKeyArmor == "" {
+			err = fmt.Errorf("private key not available")
+			return
+		}
+		priv, err = unarmorDecryptPrivKey(linfo.PrivKeyArmor, passphrase)
+		if err != nil {
+			return nil, nil, err
+		}
+	case ledgerInfo:
+		linfo := info.(ledgerInfo)
+		priv, err = crypto.NewPrivKeyLedgerSecp256k1(linfo.Path)
+		if err != nil {
+			return
+		}
+	case offlineInfo:
+		linfo := info.(offlineInfo)
+		fmt.Printf("Bytes to sign:\n%s", msg)
+		buf := bufio.NewReader(os.Stdin)
+		fmt.Printf("\nEnter Amino-encoded signature:\n")
+		// Will block until user inputs the signature
+		signed, err := buf.ReadString('\n')
+		if err != nil {
+			return nil, nil, err
+		}
+		cdc.MustUnmarshalBinary([]byte(signed), sig)
+		return sig, linfo.GetPubKey(), nil
 	}
-	priv, err := unarmorDecryptPrivKey(info.PrivKeyArmor, passphrase)
+	sig, err = priv.Sign(msg)
 	if err != nil {
-		return
+		return nil, nil, err
 	}
-	sig = priv.Sign(msg)
-	pub = priv.PubKey()
-	return
+	pub, err = priv.PubKey()
+	if err != nil {
+		return nil, nil, err
+	}
+	return sig, pub, nil
 }
 
 func (kb dbKeybase) Export(name string) (armor string, err error) {
@@ -187,7 +241,7 @@ func (kb dbKeybase) ExportPubKey(name string) (armor string, err error) {
 	if err != nil {
 		return
 	}
-	return armorPubKeyBytes(info.PubKey.Bytes()), nil
+	return armorPubKeyBytes(info.GetPubKey().Bytes()), nil
 }
 
 func (kb dbKeybase) Import(name string, armor string) (err error) {
@@ -219,23 +273,37 @@ func (kb dbKeybase) ImportPubKey(name string, armor string) (err error) {
 	if err != nil {
 		return
 	}
-	kb.writePubKey(pubKey, name)
+	kb.writeOfflineKey(pubKey, name)
 	return
 }
 
 // Delete removes key forever, but we must present the
 // proper passphrase before deleting it (for security).
+// A passphrase of 'yes' is used to delete stored
+// references to offline and Ledger / HW wallet keys
 func (kb dbKeybase) Delete(name, passphrase string) error {
 	// verify we have the proper password before deleting
 	info, err := kb.Get(name)
 	if err != nil {
 		return err
 	}
-	_, err = unarmorDecryptPrivKey(info.PrivKeyArmor, passphrase)
-	if err != nil {
-		return err
+	switch info.(type) {
+	case localInfo:
+		linfo := info.(localInfo)
+		_, err = unarmorDecryptPrivKey(linfo.PrivKeyArmor, passphrase)
+		if err != nil {
+			return err
+		}
+		kb.db.DeleteSync(infoKey(name))
+		return nil
+	case ledgerInfo:
+	case offlineInfo:
+		if passphrase != "yes" {
+			return fmt.Errorf("enter exactly 'yes' to delete the key")
+		}
+		kb.db.DeleteSync(infoKey(name))
+		return nil
 	}
-	kb.db.DeleteSync(infoKey(name))
 	return nil
 }
 
@@ -249,13 +317,18 @@ func (kb dbKeybase) Update(name, oldpass, newpass string) error {
 	if err != nil {
 		return err
 	}
-	key, err := unarmorDecryptPrivKey(info.PrivKeyArmor, oldpass)
-	if err != nil {
-		return err
+	switch info.(type) {
+	case localInfo:
+		linfo := info.(localInfo)
+		key, err := unarmorDecryptPrivKey(linfo.PrivKeyArmor, oldpass)
+		if err != nil {
+			return err
+		}
+		kb.writeLocalKey(key, name, newpass)
+		return nil
+	default:
+		return fmt.Errorf("locally stored key required")
 	}
-
-	kb.writePrivKey(key, name, newpass)
-	return nil
 }
 
 func (kb dbKeybase) writePubKey(pub crypto.PubKey, name string) Info {
@@ -267,15 +340,46 @@ func (kb dbKeybase) writePubKey(pub crypto.PubKey, name string) Info {
 	return info
 }
 
-func (kb dbKeybase) writePrivKey(priv crypto.PrivKey, name, passpwd string) Info {
-	// generate the encrypted privkey
-	privArmor := encryptArmorPrivKey(priv, passpwd)
+func (kb dbKeybase) writeLocalKey(priv crypto.PrivKey, name, passphrase string) Info {
+	// encrypt private key using passphrase
+	privArmor := encryptArmorPrivKey(priv, passphrase)
 	// make Info
-	info := newInfo(name, priv.PubKey(), privArmor)
-
-	// write them both
-	kb.db.SetSync(infoKey(name), info.bytes())
+	pub, err := priv.PubKey()
+	if err != nil {
+		panic(err)
+	}
+	info := newLocalInfo(name, pub, privArmor)
+	kb.writeInfo(info, name)
 	return info
+}
+
+func (kb dbKeybase) writeLedgerKey(pub crypto.PubKey, path crypto.DerivationPath, name string) Info {
+	info := newLedgerInfo(name, pub, path)
+	kb.writeInfo(info, name)
+	return info
+}
+
+func (kb dbKeybase) writeOfflineKey(pub crypto.PubKey, name string) Info {
+	info := newOfflineInfo(name, pub)
+	kb.writeInfo(info, name)
+	return info
+}
+
+func (kb dbKeybase) writeInfo(info Info, name string) {
+	// write the info by key
+	kb.db.SetSync(infoKey(name), writeInfo(info))
+}
+
+func generate(algo SignAlgo, secret []byte) (crypto.PrivKey, error) {
+	switch algo {
+	case AlgoEd25519:
+		return crypto.GenPrivKeyEd25519FromSecret(secret), nil
+	case AlgoSecp256k1:
+		return crypto.GenPrivKeySecp256k1FromSecret(secret), nil
+	default:
+		err := errors.Errorf("Cannot generate keys for algorithm: %s", algo)
+		return nil, err
+	}
 }
 
 func infoKey(name string) []byte {
