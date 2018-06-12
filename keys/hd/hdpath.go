@@ -31,7 +31,7 @@ const (
 	FullFundraiserPath = BIP44Prefix + "0'/0/0"
 )
 
-// BIP44Params wraps BIP 44 params (5 level BIP 32 path). 
+// BIP44Params wraps BIP 44 params (5 level BIP 32 path).
 // To receive a canonical string representation ala
 // m / purpose' / coin_type' / account' / change / address_index
 // call String() on a BIP44Params instance.
@@ -80,7 +80,11 @@ func (p BIP44Params) String() string {
 	}
 	// m / purpose' / coin_type' / account' / change / address_index
 	return fmt.Sprintf("%d'/%d'/%d'/%s/%d",
-		p.purpose, p.coinType, p.account, changeStr, p.addressIdx)
+		p.purpose,
+		p.coinType,
+		p.account,
+		changeStr,
+		p.addressIdx)
 }
 
 // ComputeMastersFromSeed returns the master public key, master secret, and chain code in hex.
