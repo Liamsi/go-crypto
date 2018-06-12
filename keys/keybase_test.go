@@ -89,18 +89,6 @@ func TestKeyManagement(t *testing.T) {
 	keyS, err = cstore.List()
 	require.NoError(t, err)
 	require.Equal(t, 1, len(keyS))
-
-	// make sure that it only signs with the right password
-	// tx := mock.NewSig([]byte("mytransactiondata"))
-	// err = cstore.Sign(n2, p1, tx)
-	// assert.NotNil(t, err)
-	// err = cstore.Sign(n2, p2, tx)
-	// assert.Nil(t, err, "%+v", err)
-	// sigs, err := tx.Signers()
-	// assert.Nil(t, err, "%+v", err)
-	// if assert.Equal(t, 1, len(sigs)) {
-	// 	assert.Equal(t, i2.PubKey, sigs[0])
-	// }
 }
 
 // TestSignVerify does some detailed checks on how we sign and validate
@@ -125,10 +113,10 @@ func TestSignVerify(t *testing.T) {
 	armor, err := cstore.ExportPubKey(n2)
 	require.Nil(t, err)
 	cstore.ImportPubKey(n3, armor)
-	// TODO(ismail): fix this ...
-	// i3, err := cstore.Get(n3)
-	// require.Nil(t, err)
-	// require.Equal(t, i3.PrivKeyArmor, "")
+	i3, err := cstore.Get(n3)
+	require.NoError(t, err)
+	require.Equal(t, i3.GetName(), n3)
+
 
 	// let's try to sign some messages
 	d1 := []byte("my first message")
@@ -197,16 +185,14 @@ func TestExportImport(t *testing.T) {
 		db,
 	)
 
-	info, _, err := cstore.CreateMnemonic("john", keys.English,"passphrase",  keys.Secp256k1)
+	info, _, err := cstore.CreateMnemonic("john", keys.English,"secretcpw",  keys.Secp256k1)
 	assert.NoError(t, err)
 	assert.Equal(t, info.GetName(), "john")
-	addr := info.GetPubKey().Address()
-	// TODO(ismail): why is addr not used above ?
 
 	john, err := cstore.Get("john")
 	assert.NoError(t, err)
 	assert.Equal(t, info.GetName(), "john")
-	addr = info.GetPubKey().Address()
+	johnAddr := info.GetPubKey().Address()
 
 	armor, err := cstore.Export("john")
 	assert.NoError(t, err)
@@ -217,7 +203,7 @@ func TestExportImport(t *testing.T) {
 	john2, err := cstore.Get("john2")
 	assert.NoError(t, err)
 
-	assert.Equal(t, john.GetPubKey().Address(), addr)
+	assert.Equal(t, john.GetPubKey().Address(), johnAddr)
 	assert.Equal(t, john.GetName(), "john")
 	assert.Equal(t, john, john2)
 }

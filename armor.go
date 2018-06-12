@@ -4,7 +4,7 @@ import (
 	"bytes"
 	"io/ioutil"
 
-	. "github.com/tendermint/tmlibs/common"
+	cmn "github.com/tendermint/tmlibs/common"
 	"golang.org/x/crypto/openpgp/armor"
 )
 
@@ -12,15 +12,15 @@ func EncodeArmor(blockType string, headers map[string]string, data []byte) strin
 	buf := new(bytes.Buffer)
 	w, err := armor.Encode(buf, blockType, headers)
 	if err != nil {
-		PanicSanity("Error encoding ascii armor: " + err.Error())
+		cmn.PanicSanity("Error encoding ascii armor: " + err.Error())
 	}
 	_, err = w.Write(data)
 	if err != nil {
-		PanicSanity("Error encoding ascii armor: " + err.Error())
+		cmn.PanicSanity("Error encoding ascii armor: " + err.Error())
 	}
 	err = w.Close()
 	if err != nil {
-		PanicSanity("Error encoding ascii armor: " + err.Error())
+		cmn.PanicSanity("Error encoding ascii armor: " + err.Error())
 	}
 	return buf.String()
 }

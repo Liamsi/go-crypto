@@ -23,7 +23,10 @@ const (
 	FullFundraiserPath = BIP44Prefix + "0'/0/0"
 )
 
-// TODO(ismail): add a constructor that takes a string for bip32
+// BIP44Params wraps BIP 44 params (5 level BIP 32 path). 
+// To receive a canonical string representation ala
+// m / purpose' / coin_type' / account' / change / address_index
+// call String() on a BIP44Params instance.
 type BIP44Params struct {
 	purpose    uint32
 	coinType   uint32
@@ -32,6 +35,8 @@ type BIP44Params struct {
 	addressIdx uint32
 }
 
+// NewParams creates a BIP 44 parameter object from the params:
+// m / purpose' / coin_type' / account' / change / address_index
 func NewParams(purpose, coinType, account uint32, change bool, addressIdx uint32) *BIP44Params {
 	return &BIP44Params{
 		purpose:    purpose,
@@ -42,6 +47,9 @@ func NewParams(purpose, coinType, account uint32, change bool, addressIdx uint32
 	}
 }
 
+// NewFundraiserParams creates a BIP 44 parameter object from the params:
+// m / 44' / 118' / account' / 0 / address_index
+// The fixed parameters (purpose', coin_type', and change) are determined by what was used in the fundraiser.
 func NewFundraiserParams(account uint32, addressIdx uint32) *BIP44Params {
 	return &BIP44Params{
 		// the following 2 params are fixed:
@@ -79,6 +87,7 @@ func ComputeMastersFromSeed(seed []byte) (secret [32]byte, chainCode [32]byte) {
 // using the given chainCode.
 func DerivePrivateKeyForPath(privKeyBytes [32]byte, chainCode [32]byte, path string) (derivedKey [32]byte, err error) {
 	data := privKeyBytes
+	// TODO(ismail): refactor this out and provide a constructor for BIP44
 	parts := strings.Split(path, "/")
 	for _, part := range parts {
 		// do we have an apostrophe?
@@ -149,7 +158,8 @@ func uint32ToBytes(i uint32) []byte {
 // i64 returns the two halfs of the SHA512 HMAC of key and data.
 func i64(key []byte, data []byte) (IL [32]byte, IR [32]byte) {
 	mac := hmac.New(sha512.New, key)
-	mac.Write(data)
+	// sha512 does not err
+	_, _ = mac.Write(data)
 	I := mac.Sum(nil)
 	copy(IL[:], I[:32])
 	copy(IR[:], I[32:])
