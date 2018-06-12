@@ -80,8 +80,8 @@ func (kb dbKeybase) CreateMnemonic(name string, language Language, passwd string
 }
 
 // CreateFundraiserKey converts a mnemonic to a private key and persists it,
-// encrypted with the given passphrase.  Functions like CreateMnemonic, but
-// seedphrase is input not output.
+// encrypted with the given password.
+// TODO(ismail)
 func (kb dbKeybase) CreateFundraiserKey(name, mnemonic, passwd string) (info Info, err error) {
 	words := strings.Split(mnemonic, " ")
 	if len(words) != 12 {
