@@ -58,7 +58,8 @@ func TestFundraiserCompatibility(t *testing.T) {
 
 		master, ch := ComputeMastersFromSeed(seed)
 		priv, err := DerivePrivateKeyForPath(master, ch, "44'/118'/0'/0/0")
-		pub := crypto.PrivKeySecp256k1(priv).PubKey()
+		assert.NoError(t, err)
+		pub, err := crypto.PrivKeySecp256k1(priv).PubKey()
 		assert.NoError(t, err)
 
 		//fmt.Printf("\tNODEJS GOLANG\n")

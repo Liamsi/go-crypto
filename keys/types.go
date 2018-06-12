@@ -18,13 +18,13 @@ type Keybase interface {
 
 	// CreateMnemonic creates a new mnemonic, and derives a hierarchical deterministic
 	// key from that.
-	CreateMnemonic(name string, language Language, passwd string, algo SigningAlgo) (info *Info, seed string, err error)
+	CreateMnemonic(name string, language Language, passwd string, algo SigningAlgo) (info Info, seed string, err error)
 	// CreateFundraiserKey takes a mnemonic and derives, a password
-	CreateFundraiserKey(name, mnemonic, passwd string) (info *Info, err error)
+	CreateFundraiserKey(name, mnemonic, passwd string) (info Info, err error)
 	// Derive derives a key from the passed mnemonic using a BIP44 path.
-	Derive(name, mnemonic, passwd string, params hd.BIP44Params) (*Info, error)
+	Derive(name, mnemonic, passwd string, params hd.BIP44Params) (Info, error)
 	// Create, store, and return a new Ledger key reference
-	CreateLedger(name string, path crypto.DerivationPath, algo SignAlgo) (info Info, err error)
+	CreateLedger(name string, path crypto.DerivationPath, algo SigningAlgo) (info Info, err error)
 
 	// Create, store, and return a new offline key reference
 	CreateOffline(name string, pubkey crypto.PubKey) (info Info, err error)
@@ -37,7 +37,7 @@ type Keybase interface {
 	ExportPubKey(name string) (armor string, err error)
 }
 
-// Publically exposed information about a keypair
+// Info is the publicly exposed information about a keypair
 type Info interface {
 	// Human-readable type for key listing
 	GetType() string
