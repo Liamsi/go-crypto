@@ -2,7 +2,19 @@
 
 ## 0.8.0
 
-**TBD**
+BREAKING CHANGES
+
+- update ed25519 signature scheme to truncated sha256 (#112)
+- renaming registered concrete type path for ed25519 signatures (#110)
+
+IMPROVEMENT
+ 
+ - SimpleProofsFromMap returns ordered keys (#115)
+ - return error on `privkey.Sign()` and `privkey.Pubkey()` (#117)
+ 
+FEATURE
+
+ - rework API to work with local and external keys (offline, HW wallets, and Ledger) (#117)    
 
 ## 0.7.0
 
