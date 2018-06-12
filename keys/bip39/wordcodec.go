@@ -37,7 +37,6 @@ func NewMnemonic(len ValidSentenceLen) (words []string, err error) {
 	if err != nil {
 		return
 	}
-	// TODO(ismail): we have to be careful with the separator in other languages here:
 	words = strings.Split(mnemonic, " ")
 	return
 }

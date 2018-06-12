@@ -73,8 +73,6 @@ func (kb dbKeybase) CreateMnemonic(name string, language Language, passwd string
 	if err != nil {
 		return
 	}
-	// TODO(ismail): we have to be careful with the separator in non-ltr languages. Ideally, our package should provide
-	// a helper function for that
 	mnemonic = strings.Join(mnemonicS, " ")
 	seed := bip39.MnemonicToSeed(mnemonic)
 	info, err = kb.persistDerivedKey(seed, passwd, name, hd.FullFundraiserPath)
