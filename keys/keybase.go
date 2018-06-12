@@ -23,7 +23,7 @@ type Language int
 const (
 	// English is the default language to create a mnemonic.
 	// It is the only supported language by this package.
-	English Language = iota
+	English Language = iota + 1
 	// Japanese is currently not supported.
 	Japanese
 	// Korean is currently not supported.
