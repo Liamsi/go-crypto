@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
-	"os"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -23,26 +22,26 @@ type addrData struct {
 	Addr     string
 }
 
-// NOTE: atom fundraiser address
-// var hdPath string = "m/44'/118'/0'/0/0"
-var hdToAddrTable []addrData
 
-func init() {
+func initFundraiserTestVectors(t *testing.T) []addrData {
+	// NOTE: atom fundraiser address
+	// var hdPath string = "m/44'/118'/0'/0/0"
+	var hdToAddrTable []addrData
 
 	b, err := ioutil.ReadFile("test.json")
 	if err != nil {
-		fmt.Println(err)
-		os.Exit(1)
+		t.Fatalf("could not read fundraiser test vector file (test.json): %s", err)
 	}
 
 	err = json.Unmarshal(b, &hdToAddrTable)
 	if err != nil {
-		fmt.Println(err)
-		os.Exit(1)
+		t.Fatalf("could not decode test vectors (test.json): %s", err)
 	}
+	return hdToAddrTable
 }
 
 func TestFundraiserCompatibility(t *testing.T) {
+	hdToAddrTable := initFundraiserTestVectors(t)
 
 	for i, d := range hdToAddrTable {
 		privB, _ := hex.DecodeString(d.Priv)
@@ -53,8 +52,8 @@ func TestFundraiserCompatibility(t *testing.T) {
 
 		seed := bip39.NewSeed(d.Mnemonic, "")
 
-		//fmt.Println("================================")
-		//fmt.Println("ROUND:", i, "MNEMONIC:", d.Mnemonic)
+		t.Log("================================")
+		t.Logf("ROUND: %d MNEMONIC: %s", i, d.Mnemonic)
 
 		master, ch := ComputeMastersFromSeed(seed)
 		priv, err := DerivePrivateKeyForPath(master, ch, "44'/118'/0'/0/0")
@@ -62,11 +61,11 @@ func TestFundraiserCompatibility(t *testing.T) {
 		pub, err := crypto.PrivKeySecp256k1(priv).PubKey()
 		assert.NoError(t, err)
 
-		//fmt.Printf("\tNODEJS GOLANG\n")
-		//fmt.Printf("SEED \t%X %X\n", seedB, seed)
-		//fmt.Printf("MSTR \t%X %X\n", masterB, master)
-		//fmt.Printf("PRIV \t%X %X\n", privB, priv)
-		//fmt.Printf("PUB  \t%X %X\n", pubB, pub)
+		t.Log("\tNODEJS GOLANG\n")
+		t.Logf("SEED \t%X %X\n", seedB, seed)
+		t.Logf("MSTR \t%X %X\n", masterB, master)
+		t.Logf("PRIV \t%X %X\n", privB, priv)
+		t.Logf("PUB  \t%X %X\n", pubB, pub)
 
 		assert.Equal(t, seedB, seed)
 		assert.Equal(t, master[:], masterB, fmt.Sprintf("Expected masters to match for %d", i))
@@ -76,7 +75,7 @@ func TestFundraiserCompatibility(t *testing.T) {
 		assert.Equal(t, pub, crypto.PubKeySecp256k1(pubBFixed), fmt.Sprintf("Expected pub keys to match for %d", i))
 
 		addr := pub.Address()
-		// fmt.Printf("ADDR  \t%X %X\n", addrB, addr)
+		t.Logf("ADDR  \t%X %X\n", addrB, addr)
 		assert.Equal(t, addr, crypto.Address(addrB), fmt.Sprintf("Expected addresses to match %d", i))
 
 	}
