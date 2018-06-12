@@ -40,6 +40,14 @@ const (
 	Italian
 )
 
+var (
+	// ErrUnsupportedSigningAlgo is raised when the caller tries to use a different signing scheme than secp256k1.
+	ErrUnsupportedSigningAlgo = errors.New("unsupported signing algo: only secp256k1 is supported")
+	// ErrUnsupportedLanguage is raised when the caller tries to use a different language than english for creating
+	// a mnemonic sentence.
+	ErrUnsupportedLanguage = errors.New("unsupported language: only english is supported")
+)
+
 // dbKeybase combines encryption and storage implementation to provide
 // a full-featured key manager
 type dbKeybase struct {
@@ -61,10 +69,10 @@ func New(db dbm.DB) Keybase {
 // already stored under the same name.
 func (kb dbKeybase) CreateMnemonic(name string, language Language, passwd string, algo SigningAlgo) (info Info, mnemonic string, err error) {
 	if language != English {
-		return nil, "", fmt.Errorf("unsupported language: currently only english is supported")
+		return nil, "", ErrUnsupportedLanguage
 	}
 	if algo != Secp256k1 {
-		err = fmt.Errorf("currently only Secp256k1 are supported as required by bip39/bip44, requested %s", algo)
+		err = ErrUnsupportedSigningAlgo
 		return
 	}
 
@@ -109,7 +117,7 @@ func (kb dbKeybase) Derive(name, mnemonic, passwd string, params hd.BIP44Params)
 // It returns the created key info and an error if the Ledger could not be queried
 func (kb dbKeybase) CreateLedger(name string, path crypto.DerivationPath, algo SigningAlgo) (Info, error) {
 	if algo != Secp256k1 {
-		return nil, fmt.Errorf("only secp256k1 is supported for Ledger devices")
+		return nil, ErrUnsupportedSigningAlgo
 	}
 	priv, err := crypto.NewPrivKeyLedgerSecp256k1(path)
 	if err != nil {
@@ -224,7 +232,7 @@ func (kb dbKeybase) Sign(name, passphrase string, msg []byte) (sig crypto.Signat
 func (kb dbKeybase) Export(name string) (armor string, err error) {
 	bz := kb.db.Get(infoKey(name))
 	if bz == nil {
-		return "", errors.New("No key to export with name " + name)
+		return "", fmt.Errorf("no key to export with name %s", name)
 	}
 	return armorInfoBytes(bz), nil
 }
@@ -235,7 +243,7 @@ func (kb dbKeybase) Export(name string) (armor string, err error) {
 func (kb dbKeybase) ExportPubKey(name string) (armor string, err error) {
 	bz := kb.db.Get(infoKey(name))
 	if bz == nil {
-		return "", errors.New("No key to export with name " + name)
+		return "", fmt.Errorf("no key to export with name %s", name)
 	}
 	info, err := readInfo(bz)
 	if err != nil {
