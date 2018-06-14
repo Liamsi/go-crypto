@@ -1,0 +1,32 @@
+version: 2
+
+jobs:
+  build:
+    working_directory: /go/src/github.com/tendermint/go-crypto
+    docker:
+    - image: circleci/golang:1.10.0
+      environment:
+        GOBIN: /tmp/workspace/bin
+    steps:
+      - run: mkdir -p /tmp/workspace/bin
+      - run: mkdir -p /tmp/workspace/profiles
+      - checkout
+      - restore_cache:
+              keys:
+              - v1-dep-{{ .Branch }}-
+              - v1-dep-master-
+              - v1-dep-
+      - run:
+              name: test
+              command: |
+                go version
+                cd $PROJECT_PATH && make get_tools && make all
+      - persist_to_workspace:
+          root: /tmp/workspace
+          paths:
+            - bin
+                - profiles
+    - save_cache:
+        key: v1-dep-{{ .Branch }}-{{ epoch }}
+        paths:
+        - ~/.go_workspace
