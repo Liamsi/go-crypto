@@ -30,7 +30,7 @@ func TestKeyManagement(t *testing.T) {
 	assert.Empty(t, l)
 
 	_, _, err = cstore.CreateMnemonic(n1, keys.English, p1, keys.Ed25519)
-	assert.Errorf(t, err, "ed25519 keys are currently not supported by keybase")
+	assert.Error(t, err, "ed25519 keys are currently not supported by keybase")
 
 	// create some keys
 	_, err = cstore.Get(n1)

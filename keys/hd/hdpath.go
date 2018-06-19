@@ -137,10 +137,8 @@ func derivePrivateKey(privKeyBytes [32]byte, chainCode [32]byte, index uint32, h
 		data = append([]byte{byte(0)}, privKeyBytes[:]...)
 	} else {
 		// this can't return an error:
-		pubkey, err := crypto.PrivKeySecp256k1(privKeyBytes).PubKey()
-		if err != nil {
-			panic(fmt.Sprintf("unexpected error wile calling PrivKeySecp256k1.PubKey(): %s", err))
-		}
+		pubkey := crypto.PrivKeySecp256k1(privKeyBytes).PubKey()
+
 		public := pubkey.(crypto.PubKeySecp256k1)
 		data = public[:]
 	}

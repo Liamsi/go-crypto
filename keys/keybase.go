@@ -147,10 +147,7 @@ func (kb *dbKeybase) persistDerivedKey(seed []byte, passwd, name, fullHdPath str
 	if passwd != "" {
 		info = kb.writeLocalKey(crypto.PrivKeySecp256k1(derivedPriv), name, passwd)
 	} else {
-		pubk, err := crypto.PrivKeySecp256k1(derivedPriv).PubKey()
-		if err != nil {
-			panic(err)
-		}
+		pubk := crypto.PrivKeySecp256k1(derivedPriv).PubKey()
 		info = kb.writeOfflineKey(pubk, name)
 	}
 	return
