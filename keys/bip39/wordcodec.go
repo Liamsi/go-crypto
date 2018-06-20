@@ -49,12 +49,12 @@ func MnemonicToSeed(mne string) (seed []byte) {
 	return
 }
 
-// MnemonicToSeedWithErrChecking is completely equivalent to MnemonicToSeed.
+// MnemonicToSeedWithErrChecking returns the same seed as MnemonicToSeed.
 // It creates a BIP 39 seed from the passed mnemonic (with an empty BIP 39 password).
+//
 // Different from MnemonicToSeed it validates the checksum.
 // For details on the checksum see the BIP 39 spec.
 func MnemonicToSeedWithErrChecking(mne string) (seed []byte, err error) {
-	// we do not checksum here...
 	seed, err = bip39.NewSeedWithErrorChecking(mne, "")
 	return
 }

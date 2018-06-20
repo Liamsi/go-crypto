@@ -59,16 +59,7 @@ func NewParams(purpose, coinType, account uint32, change bool, addressIdx uint32
 // m / 44' / 118' / account' / 0 / address_index
 // The fixed parameters (purpose', coin_type', and change) are determined by what was used in the fundraiser.
 func NewFundraiserParams(account uint32, addressIdx uint32) *BIP44Params {
-	return &BIP44Params{
-		// the following 2 params are fixed:
-		// m/44'/118'/
-		purpose:  44,
-		coinType: 118,
-		account:  account,
-		// we do not use the change param:
-		change:     false,
-		addressIdx: addressIdx,
-	}
+	return NewParams(44, 118, account, false, addressIdx)
 }
 
 func (p BIP44Params) String() string {
@@ -97,9 +88,8 @@ func ComputeMastersFromSeed(seed []byte) (secret [32]byte, chainCode [32]byte) {
 
 // DerivePrivateKeyForPath derives the private key by following the BIP 32/44 path from privKeyBytes,
 // using the given chainCode.
-func DerivePrivateKeyForPath(privKeyBytes [32]byte, chainCode [32]byte, path string) (derivedKey [32]byte, err error) {
+func DerivePrivateKeyForPath(privKeyBytes [32]byte, chainCode [32]byte, path string) ([32]byte, error) {
 	data := privKeyBytes
-	// TODO(ismail): refactor this out and provide a constructor for BIP44
 	parts := strings.Split(path, "/")
 	for _, part := range parts {
 		// do we have an apostrophe?
@@ -108,28 +98,29 @@ func DerivePrivateKeyForPath(privKeyBytes [32]byte, chainCode [32]byte, path str
 		if harden {
 			part = part[:len(part)-1]
 		}
-		var idx int
-		idx, err = strconv.Atoi(part)
+		idx, err := strconv.Atoi(part)
 		if err != nil {
-			err = fmt.Errorf("invalid BIP 32 path: %s", err)
-			return
+			return [32]byte{}, fmt.Errorf("invalid BIP 32 path: %s", err)
 		}
 		if idx < 0 {
-			err = errors.New("invalid BIP 32 path: index negative ot too large")
-			return
+			return [32]byte{}, errors.New("invalid BIP 32 path: index negative ot too large")
 		}
 		data, chainCode = derivePrivateKey(data, chainCode, uint32(idx), harden)
 	}
+	var derivedKey [32]byte
 	n := copy(derivedKey[:], data[:])
 	if n != 32 || len(data) != 32 {
-		err = fmt.Errorf("expected a (secp256k1) key of length 32, got length: %v", len(data))
+		return [32]byte{}, fmt.Errorf("expected a (secp256k1) key of length 32, got length: %v", len(data))
 	}
-	return
+
+	return derivedKey, nil
 }
 
 // derivePrivateKey derives the private key with index and chainCode.
 // If harden is true, the derivation is 'hardened'.
 // It returns the new private key and new chain code.
+// For more information on hardened keys see:
+//  - https://github.com/bitcoin/bips/blob/master/bip-0032.mediawiki
 func derivePrivateKey(privKeyBytes [32]byte, chainCode [32]byte, index uint32, harden bool) ([32]byte, [32]byte) {
 	var data []byte
 	if harden {

@@ -82,15 +82,15 @@ func (ri *randInfo) MixEntropy(seedBytes []byte) {
 	hashBytes32 := [32]byte{}
 	copy(hashBytes32[:], hashBytes)
 	ri.seedBytes = xorBytes32(ri.seedBytes, hashBytes32)
-	// CreateMnemonic new cipher.Block
+	// Create new cipher.Block
 	var err error
 	ri.cipherAES256, err = aes.NewCipher(ri.seedBytes[:])
 	if err != nil {
 		PanicSanity("Error creating AES256 cipher: " + err.Error())
 	}
-	// CreateMnemonic new stream
+	// Create new stream
 	ri.streamAES256 = cipher.NewCTR(ri.cipherAES256, randBytes(aes.BlockSize))
-	// CreateMnemonic new reader
+	// Create new reader
 	ri.reader = &cipher.StreamReader{S: ri.streamAES256, R: crand.Reader}
 }
 
