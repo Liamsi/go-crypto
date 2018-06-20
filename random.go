@@ -82,7 +82,7 @@ func (ri *randInfo) MixEntropy(seedBytes []byte) {
 	hashBytes32 := [32]byte{}
 	copy(hashBytes32[:], hashBytes)
 	ri.seedBytes = xorBytes32(ri.seedBytes, hashBytes32)
-	// CreateMnemonic new cipher.Block
+	// Create new cipher.Block
 	var err error
 	ri.cipherAES256, err = aes.NewCipher(ri.seedBytes[:])
 	if err != nil {
